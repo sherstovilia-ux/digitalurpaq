@@ -15,7 +15,7 @@ st.set_page_config(
 # ---- Banner GIF ----
 banner_html = """
 <div class="banner">
-    <img src="https://d2n7fc0kw20ri7.cloudfront.net/3xumz%2Fpreview%2F72206457%2Fmain_large.gif?response-content-disposition=inline%3Bfilename%3D%22main_large.gif%22%3B&response-content-type=image%2Fgif&Expires=1761679960&Signature=LTOdJvOb7VmYh1hONy9u4bm1xysw5E2TsE~roe~D49iDScUu2DekV8cRSAcwseZlH~2mNhYfFRwd0ZXdrUh5IqUw2xPexLY1hZ8MwMV4-ovzaxEmJJTD3u62QVUV0VH9Pi1lXPWjdkk7csX3051L0H3hKbjwwKtCj2qe1K0w0x3fFQMPoIzxz7EN8NPCL6BPI9zTrBYHiRAEb6q01H0GHYV3oXXyx1whltJmMehSPZDVDmDJLMNhd6XWPuiAuKYC6as~7Kx1aPRWEk6lewC6VynYeIzJX0J7rwDlwXTIEv2f3eOKG81nACnV1YA5gnL36Qiwd3N3qBCYpLBIM4GEJQ__&Key-Pair-Id=APKAJT5WQLLEOADKLHBQ" alt="Banner Image">
+    <img src="https://s12.gifyu.com/images/b36xz.gif" alt="Robot Banner">
 </div>
 <style>
     .banner {
@@ -23,10 +23,12 @@ banner_html = """
         height: auto;
         overflow: hidden;
         margin-bottom: 20px;
+        text-align: center;
     }
     .banner img {
         width: 100%;
         height: auto;
+        max-height: 300px;
         object-fit: cover;
         border-radius: 8px;
     }
@@ -104,7 +106,7 @@ user_input = st.text_input(
 )
 send = st.button("Отправить")
 
-# ---- Text-to-Speech helper ----
+# ---- TTS helper ----
 def speak(text: str):
     if not st.session_state.tts_enabled:
         return
@@ -120,7 +122,7 @@ def speak(text: str):
         </audio>
     """, unsafe_allow_html=True)
 
-# ---- Chatbot logic ----
+# ---- Logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
@@ -154,4 +156,5 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
     st.experimental_rerun()
+
 
