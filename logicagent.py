@@ -7,32 +7,52 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🧼 Hide Streamlit's default UI elements (top menu, footer, etc.)
-hide_streamlit_style = """
+# --- Hide Streamlit UI elements ---
+st.markdown("""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        [data-testid="stToolbar"] {visibility: hidden !important;}
-        [data-testid="stStatusWidget"] {display: none;}
-        [data-testid="stDecoration"] {display: none;}
-        [data-testid="stHeader"] {display: none;}
-        [data-testid="stSidebar"] {display: none;}
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 0rem;
+        #MainMenu, footer, header, [data-testid="stToolbar"] {visibility: hidden !important;}
+        .block-container {padding-top: 1rem; padding-bottom: 1rem;}
+        
+        /* Chat bubble styles */
+        .chat-bubble {
+            padding: 10px 16px;
+            border-radius: 18px;
+            margin: 5px 0;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        .bot {
+            background-color: #f1f0f0;
+            color: #000;
+            text-align: left;
+            border-top-left-radius: 0;
+            margin-right: auto;
+        }
+        .user {
+            background-color: #0078ff;
+            color: white;
+            text-align: right;
+            border-top-right-radius: 0;
+            margin-left: auto;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input, textarea {
+            font-size: 16px !important;
         }
     </style>
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# The rest of your code:
-st.title("🤖 Помощник Digital Urpaq")
-st.write("Напишите вопрос о кабинетах, контактах или записи.")
+st.markdown("<h2 style='text-align:center;'>🤖 Digital Urpaq Support Bot</h2>", unsafe_allow_html=True)
+st.write("💬 Задайте вопрос о кабинетах, контактах или записи:")
 
+# --- Responses ---
 responses = {
     "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
+    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -53,26 +73,42 @@ cabinet_map = {
     "рисование": "🎨 Кабинет Рисования — 3 этаж, правое крыло.",
 }
 
-user_input = st.text_input("🧑‍💻 Ваш вопрос:")
+# --- Chat memory (keeps messages during the session) ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# --- Display chat history ---
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+for msg in st.session_state.messages:
+    role_class = "user" if msg["is_user"] else "bot"
+    st.markdown(f"<div class='chat-bubble {role_class}'>{msg['text']}</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# --- Input box ---
+user_input = st.text_input("✏️ Ваш вопрос:")
 
 if st.button("Отправить"):
-    message = user_input.lower()
-    reply = None
+    if user_input.strip():
+        message = user_input.lower()
+        st.session_state.messages.append({"text": user_input, "is_user": True})
+        reply = None
 
-    if "кабинет" in message:
-        for name, location in cabinet_map.items():
-            if name in message:
-                reply = location
-                break
+        if "кабинет" in message:
+            for name, location in cabinet_map.items():
+                if name in message:
+                    reply = location
+                    break
+            if not reply:
+                reply = "🏢 Уточните название кабинета."
+        else:
+            for k, v in responses.items():
+                if k in message:
+                    reply = v
+                    break
+
         if not reply:
-            reply = "🏢 Уточните название кабинета."
-    else:
-        for k, v in responses.items():
-            if k in message:
-                reply = v
-                break
+            reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
-    if not reply:
-        reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
+        st.session_state.messages.append({"text": reply, "is_user": False})
+        st.experimental_rerun()
 
-    st.markdown(f"**🤖 Ответ:** {reply}")
