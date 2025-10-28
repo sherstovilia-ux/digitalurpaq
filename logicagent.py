@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 from gtts import gTTS
 import base64
 from io import BytesIO
@@ -6,7 +7,6 @@ from io import BytesIO
 # ---- Page setup ----
 st.set_page_config(
     page_title="Digital Urpaq Support Bot",
-    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -31,17 +31,9 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Display GIF ----
-gif_url = "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWxvanhhc2EyYnhjeWlqMHlpYXNmOXI1eXVhdHdjb3MzanNjbTBreCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/34nKuzcu0ggKPCq935/giphy.gif"
-st.markdown(f"""
-    <div style="text-align:center;">
-        <img src="{gif_url}" height="200">
-    </div>
-""", unsafe_allow_html=True)
-
 # ---- Responses ----
 responses = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
@@ -72,6 +64,14 @@ if "tts_enabled" not in st.session_state:
 # ---- Title ----
 st.title("Digital Urpaq Support Bot")
 
+# ---- Display GIF ----
+gif_url = "https://jumpshare.com/s/vwHpRtMnhSxGcZORMFcZ"
+st.markdown(f"""
+    <div style="text-align:center;">
+        <img src="{gif_url}" height="200">
+    </div>
+""", unsafe_allow_html=True)
+
 # ---- Chat display ----
 chat_placeholder = st.empty()
 with chat_placeholder.container():
@@ -82,11 +82,7 @@ with chat_placeholder.container():
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---- Input area ----
-user_input = st.text_input(
-    "Ваш вопрос:",
-    placeholder="Напишите сообщение...",
-    key="text_input_box"
-)
+user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...", key="text_input_box")
 send = st.button("Отправить")
 
 # ---- TTS helper ----
@@ -113,7 +109,6 @@ if send and user_input:
     message = user_msg.lower()
     reply = None
 
-    # Commands
     if "выключи голос" in message:
         st.session_state.tts_enabled = False
         reply = "Голос отключен."
