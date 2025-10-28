@@ -1,5 +1,6 @@
-import streamlit as st
+import streamlit as st 
 import requests
+from streamlit_lottie import st_lottie
 from gtts import gTTS
 import base64
 from io import BytesIO
@@ -7,6 +8,7 @@ from io import BytesIO
 # ---- Page setup ----
 st.set_page_config(
     page_title="Digital Urpaq Support Bot",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -28,30 +30,24 @@ footer {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
-@keyframes float {
-    0% { transform: translate(-50%, -50%) translateY(0px); }
-    50% { transform: translate(-50%, -50%) translateY(-20px); }
-    100% { transform: translate(-50%, -50%) translateY(0px); }
-}
-.background-gif {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.1;
-    z-index: -1;
-    width: 60%;
-    max-width: 800px;
-    animation: float 6s ease-in-out infinite;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Background GIF ----
-gif_url = "https://pouch.jumpshare.com/download/axpntC92PREEszQGqRpYDYsQozCm8u_R4aMks2IliXGfKE9JvPSEd8SlniUCABmJYrM2_RxhjMfbVJ5fzwAGjUb8RfglIZAKwLGgTdX0m-4"
-st.markdown(f'<img src="{gif_url}" class="background-gif">', unsafe_allow_html=True)
+# ---- Lottie helper ----
+def load_lottie_url(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
-# ---- Predefined responses ----
+# ---- Load robot animation ----
+lottie_robot = load_lottie_url("https://assets10.lottiefiles.com/packages/lf20_j1adxtyb.json")
+if lottie_robot:
+    st_lottie(lottie_robot, height=120, key="background_robot")
+else:
+    st.warning("Robot animation failed to load.")
+
+# ---- Responses ----
 responses = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
@@ -69,7 +65,7 @@ cabinet_map = {
     "3д моделирования": "Кабинет 3D-моделирования — 2 этаж, IT-блок, правое крыло.",
     "роботы": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
     "вр": "VR-кабинет — 2 этаж, правое крыло.",
-    "программирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
+    "програмирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
     "анимирование": "Кабинет Анимирования — 2 этаж, правое крыло.",
     "экономика": "Кабинет Экономики — 2 этаж, правое крыло.",
     "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
@@ -94,7 +90,11 @@ with chat_placeholder.container():
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---- Input area ----
-user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...")
+user_input = st.text_input(
+    "Ваш вопрос:",
+    placeholder="Напишите сообщение...",
+    key="text_input_box"
+)
 send = st.button("Отправить")
 
 # ---- TTS helper ----
@@ -113,7 +113,7 @@ def speak(text: str):
         </audio>
     """, unsafe_allow_html=True)
 
-# ---- Chat logic ----
+# ---- Logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
@@ -147,4 +147,5 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
     st.experimental_rerun()
+
 
