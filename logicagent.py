@@ -35,10 +35,13 @@ footer {visibility: hidden;}
 
 # ---- Load Lottie ----
 def load_lottie_url(url):
-    r = requests.get(url)
-    if r.status_code != 200:
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
         return None
-    return r.json()
 
 # Robot-themed Lottie animation
 lottie_robot = load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_jy7d6hnf.json")
@@ -93,10 +96,11 @@ col1, col2 = st.columns([5, 1])
 with col2:
     send = st.button("📩")
 
-# ---- Render robot animation in bottom-right corner ----
-lottie_placeholder = st.empty()
-with lottie_placeholder.container():
+# ---- Render robot animation safely ----
+if lottie_robot:
     st_lottie(lottie_robot, height=120, key="background_robot")
+else:
+    st.warning("🤖 Robot animation failed to load.")
 
 # ---- Logic ----
 if send and user_input:
@@ -126,4 +130,3 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
     render_chat()
-
