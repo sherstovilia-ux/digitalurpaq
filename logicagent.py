@@ -4,25 +4,18 @@ import base64
 from io import BytesIO
 
 # ---- Page setup ----
-st.set_page_config(
-    page_title="Digital Urpaq Support Bot",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
 
-# ---- Banner ----
+# ---- CSS ----
 st.markdown("""
-<div class="banner">
-    <img src="https://s12.gifyu.com/images/b36xz.gif" alt="Robot Banner">
-</div>
 <style>
+header, footer, #MainMenu {visibility: hidden;}
 .banner img {
     width: 100%;
-    max-height: 280px;
+    max-height: 250px;
     object-fit: cover;
     border-radius: 10px;
 }
-header, footer, #MainMenu {visibility: hidden;}
 .chat-bubble {
     border-radius: 20px;
     padding: 10px 15px;
@@ -33,7 +26,24 @@ header, footer, #MainMenu {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
+.mic {
+    display: inline-block;
+    margin-left: 10px;
+    animation: pulse 1s infinite;
+}
+@keyframes pulse {
+    0% {transform: scale(1); opacity: 1;}
+    50% {transform: scale(1.3); opacity: 0.5;}
+    100% {transform: scale(1); opacity: 1;}
+}
 </style>
+""", unsafe_allow_html=True)
+
+# ---- Banner ----
+st.markdown("""
+<div class="banner">
+    <img src="https://s12.gifyu.com/images/b36xz.gif" alt="Banner">
+</div>
 """, unsafe_allow_html=True)
 
 # ---- Ответы ----
@@ -65,13 +75,21 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "last_audio" not in st.session_state:
-    st.session_state.last_audio = None
+if "pending_audio" not in st.session_state:
+    st.session_state.pending_audio = None
 
-# ---- Заголовок ----
-st.title("🤖 Digital Urpaq Support Bot")
+# ---- TTS ----
+def make_tts(text: str):
+    """Создаёт base64 mp3 из текста"""
+    tts = gTTS(text=text, lang='ru', tld='com', slow=False)
+    fp = BytesIO()
+    tts.write_to_fp(fp)
+    fp.seek(0)
+    b64 = base64.b64encode(fp.read()).decode()
+    return f"data:audio/mp3;base64,{b64}"
 
 # ---- Отображение чата ----
+st.title("🤖 Digital Urpaq Support Bot")
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
@@ -83,22 +101,13 @@ with st.container():
 user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...")
 send = st.button("Отправить")
 
-# ---- Функция TTS ----
-def speak(text):
-    tts = gTTS(text=text, lang='ru', tld='com', slow=False)
-    fp = BytesIO()
-    tts.write_to_fp(fp)
-    fp.seek(0)
-    audio_bytes = fp.read()
-    b64 = base64.b64encode(audio_bytes).decode()
-    st.session_state.last_audio = f"data:audio/mp3;base64,{b64}"
-
 # ---- Логика ----
 if send and user_input:
-    message = user_input.strip().lower()
-    st.session_state.messages.append({"role": "user", "text": user_input})
-
+    user_msg = user_input.strip()
+    st.session_state.messages.append({"role": "user", "text": user_msg})
+    message = user_msg.lower()
     reply = None
+
     if "выключи голос" in message:
         st.session_state.tts_enabled = False
         reply = "Голос отключен."
@@ -108,9 +117,9 @@ if send and user_input:
     elif "актовый зал" in message:
         reply = responses["актовый зал"]
     elif "кабинет" in message:
-        for name, location in cabinet_map.items():
-            if name in message:
-                reply = location
+        for k, v in cabinet_map.items():
+            if k in message:
+                reply = v
                 break
         if not reply:
             reply = "Уточните название кабинета."
@@ -125,15 +134,22 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
 
     if st.session_state.tts_enabled:
-        speak(reply)
+        st.session_state.pending_audio = make_tts(reply)
+    else:
+        st.session_state.pending_audio = None
 
     st.rerun()
 
-# ---- Воспроизведение аудио ----
-if st.session_state.last_audio and st.session_state.tts_enabled:
+# ---- Проигрывание звука ----
+if st.session_state.pending_audio:
+    st.markdown("""
+        <div style='text-align:center; font-size:18px;'>🎤 <span class="mic">Говорю...</span></div>
+    """, unsafe_allow_html=True)
     st.markdown(f"""
-        <audio autoplay controls style="width: 100%; margin-top:10px;">
-            <source src="{st.session_state.last_audio}" type="audio/mp3">
+        <audio autoplay>
+            <source src="{st.session_state.pending_audio}" type="audio/mp3">
         </audio>
     """, unsafe_allow_html=True)
+    # После воспроизведения очищаем, чтобы следующая реплика проигралась заново
+    st.session_state.pending_audio = None
 
