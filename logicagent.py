@@ -55,8 +55,9 @@ def load_lottie_url(url: str):
 
 def load_lottie_local(filepath: str):
     try:
+        import json
         with open(filepath, "r", encoding="utf-8") as f:
-            return f.read()
+            return json.load(f)
     except:
         return None
 
@@ -68,19 +69,21 @@ if not lottie_robot:
 # ---- Responses ----
 responses = {
     "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40.",
-    "актовый зал": "🎭 В здании три актовых зала...",
+    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/...",
 }
 
 cabinet_map = {
-    "лего": "🧩 Кабинет LEGO-конструирования — 1 этаж, правое крыло...",
+    "лего": "🧩 Кабинет LEGO-конструирования — 1 этаж, правое крыло.",
     "роботы": "🤖 Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
 }
 
 # ---- Session state ----
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq."}]
+if "input" not in st.session_state:
+    st.session_state.input = ""
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
@@ -89,6 +92,7 @@ st.title("🤖 Digital Urpaq Support Bot")
 if lottie_robot:
     st_lottie(lottie_robot, height=150, key="robot_animation", speed=1)
 
+# Chat display
 chat_placeholder = st.empty()
 with chat_placeholder.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
@@ -99,7 +103,7 @@ with chat_placeholder.container():
 
 # ---- Input area ----
 st.markdown("---")
-user_input = st.text_input("✏️ Ваш вопрос:", key="input", placeholder="Напишите сообщение...")
+user_input = st.text_input("✏️ Ваш вопрос:", key="input", value=st.session_state.input, placeholder="Напишите сообщение...")
 col1, col2 = st.columns([5, 1])
 with col2:
     send = st.button("📩")
@@ -109,6 +113,7 @@ if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
 
+    # Generate bot reply
     message = user_msg.lower()
     reply = None
 
@@ -129,5 +134,5 @@ if send and user_input:
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-    st.experimental_rerun()
+    st.session_state.input = ""  # clear input box
 
