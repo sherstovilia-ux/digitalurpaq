@@ -1,3 +1,2 @@
-streamlit        # for the web app
-gTTS             # Google Text-to-Speech for Russian TTS
-pydub            # audio manipulation (speed/pitch)
+streamlit
+pyttsx3
