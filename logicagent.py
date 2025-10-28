@@ -1,4 +1,4 @@
-import streamlit as st 
+import streamlit as st
 import requests
 from streamlit_lottie import st_lottie
 from gtts import gTTS
@@ -65,7 +65,7 @@ cabinet_map = {
     "3д моделирования": "Кабинет 3D-моделирования — 2 этаж, IT-блок, правое крыло.",
     "роботы": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
     "вр": "VR-кабинет — 2 этаж, правое крыло.",
-    "програмирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
+    "программирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
     "анимирование": "Кабинет Анимирования — 2 этаж, правое крыло.",
     "экономика": "Кабинет Экономики — 2 этаж, правое крыло.",
     "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
@@ -113,7 +113,7 @@ def speak(text: str):
         </audio>
     """, unsafe_allow_html=True)
 
-# ---- Logic ----
+# ---- Chat logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
@@ -147,5 +147,6 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
     st.experimental_rerun()
+
 
 
