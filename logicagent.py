@@ -115,10 +115,13 @@ def speak(text: str):
     fp.seek(0)
     audio_bytes = fp.read()
     b64_audio = base64.b64encode(audio_bytes).decode()
+
+    # --- JavaScript autoplay workaround ---
     st.markdown(f"""
-        <audio autoplay="true">
-        <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
-        </audio>
+        <script>
+            var audio = new Audio("data:audio/mp3;base64,{b64_audio}");
+            audio.play().catch(e => console.log('Autoplay blocked:', e));
+        </script>
     """, unsafe_allow_html=True)
 
 # ---- Logic ----
@@ -155,6 +158,11 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
     st.rerun()
+
+    st.session_state.messages.append({"role": "bot", "text": reply})
+    speak(reply)
+    st.rerun()
+
 
 
 
