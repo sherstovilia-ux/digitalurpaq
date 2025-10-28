@@ -141,22 +141,20 @@ if send and user_input:
 
 # ---- Воспроизведение ----
 if st.session_state.pending_audio:
-    st.markdown("""
-        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
-    """, unsafe_allow_html=True)
-    st.markdown(f"""
-        <audio id="bot_audio" autoplay>
-            <source src="{st.session_state.pending_audio}" type="audio/mp3">
-        </audio>
-        <script>
-            const audio = document.getElementById('bot_audio');
-            audio.onended = () => {{
-                const mic = document.getElementById('mic-indicator');
-                if (mic) mic.style.display = 'none';
-            }};
-        </script>
-    """, unsafe_allow_html=True)
-
-    # очищаем, чтобы не повторялось при следующем рендере
+    audio_html = f"""
+    <div id="mic-container">
+      <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
+      <audio id="bot_audio" autoplay>
+          <source src="{st.session_state.pending_audio}" type="audio/mp3">
+      </audio>
+      <script>
+          const mic = parent.document.getElementById('mic-indicator');
+          const audio = document.getElementById('bot_audio');
+          audio.onended = () => {{
+              if (mic) mic.style.display = 'none';
+          }};
+      </script>
+    </div>
+    """
+    st.components.v1.html(audio_html, height=100)
     st.session_state.pending_audio = None
-
