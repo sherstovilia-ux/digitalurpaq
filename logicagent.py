@@ -43,7 +43,7 @@ st.markdown("""
 # ---- Responses ----
 responses = {
     "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
+    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -66,16 +66,14 @@ cabinet_map = {
 
 # ---- Session state ----
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
+    st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Голос включён. Скажите 'выключи голос', чтобы отключить звук."}]
+
+# Voice ON by default
 if "voice_enabled" not in st.session_state:
-    st.session_state.voice_enabled = False
+    st.session_state.voice_enabled = True
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
-
-# Voice toggle in sidebar
-st.sidebar.header("⚙️ Настройки")
-st.session_state.voice_enabled = st.sidebar.toggle("🔊 Включить голос робота", value=st.session_state.voice_enabled)
 
 chat_placeholder = st.empty()
 with chat_placeholder.container():
@@ -98,10 +96,17 @@ if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
 
-    message = user_msg.lower()
+    message = user_msg.lower().strip()
     reply = None
 
-    if "кабинет" in message:
+    # ---- Voice control commands ----
+    if "выключи голос" in message:
+        st.session_state.voice_enabled = False
+        reply = "🔇 Голос робота выключен."
+    elif "включи голос" in message:
+        st.session_state.voice_enabled = True
+        reply = "🔊 Голос робота включен."
+    elif "кабинет" in message:
         for name, location in cabinet_map.items():
             if name in message:
                 reply = location
@@ -120,21 +125,24 @@ if send and user_input:
     # Add bot message
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- Voice (if enabled) ----
+    # ---- Voice playback (if enabled) ----
     if st.session_state.voice_enabled:
-        tts = gTTS(text=reply, lang="ru")
-        tts.save("bot_voice.mp3")
+        try:
+            tts = gTTS(text=reply, lang="ru")
+            tts.save("bot_voice.mp3")
 
-        with open("bot_voice.mp3", "rb") as f:
-            audio_bytes = f.read()
-            b64_audio = base64.b64encode(audio_bytes).decode()
+            with open("bot_voice.mp3", "rb") as f:
+                audio_bytes = f.read()
+                b64_audio = base64.b64encode(audio_bytes).decode()
 
-        audio_html = f"""
-            <audio autoplay>
-                <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
-            </audio>
-        """
-        st.markdown(audio_html, unsafe_allow_html=True)
+            audio_html = f"""
+                <audio autoplay>
+                    <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+                </audio>
+            """
+            st.markdown(audio_html, unsafe_allow_html=True)
+        except Exception as e:
+            st.warning("⚠️ Не удалось воспроизвести голос. Проверьте подключение к интернету.")
 
     try:
         st.rerun()
