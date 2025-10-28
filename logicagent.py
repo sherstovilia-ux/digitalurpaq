@@ -1,6 +1,4 @@
-import streamlit as st 
-import requests
-from streamlit_lottie import st_lottie
+import streamlit as st
 from gtts import gTTS
 import base64
 from io import BytesIO
@@ -8,7 +6,7 @@ from io import BytesIO
 # ---- Page setup ----
 st.set_page_config(
     page_title="Digital Urpaq Support Bot",
-    page_icon=None,
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -33,19 +31,13 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Lottie helper ----
-def load_lottie_url(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-# ---- Load robot animation ----
-lottie_robot = load_lottie_url("https://assets10.lottiefiles.com/packages/lf20_j1adxtyb.json")
-if lottie_robot:
-    st_lottie(lottie_robot, height=120, key="background_robot")
-else:
-    st.warning("Robot animation failed to load.")
+# ---- Display GIF ----
+gif_url = "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWxvanhhc2EyYnhjeWlqMHlpYXNmOXI1eXVhdHdjb3MzanNjbTBreCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/34nKuzcu0ggKPCq935/giphy.gif"
+st.markdown(f"""
+    <div style="text-align:center;">
+        <img src="{gif_url}" height="200">
+    </div>
+""", unsafe_allow_html=True)
 
 # ---- Responses ----
 responses = {
@@ -121,6 +113,7 @@ if send and user_input:
     message = user_msg.lower()
     reply = None
 
+    # Commands
     if "выключи голос" in message:
         st.session_state.tts_enabled = False
         reply = "Голос отключен."
