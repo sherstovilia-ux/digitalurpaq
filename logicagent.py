@@ -1,4 +1,7 @@
 import streamlit as st
+from gtts import gTTS
+import base64
+import os
 
 # ---- Page setup ----
 st.set_page_config(
@@ -8,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ---- Clean UI (hides Streamlit header/footer) ----
+# ---- Clean UI ----
 st.markdown("""
     <style>
         header {visibility: hidden;}
@@ -40,7 +43,7 @@ st.markdown("""
 # ---- Responses ----
 responses = {
     "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
+    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -108,9 +111,30 @@ if send and user_input:
     if not reply:
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
+    # Add bot message
     st.session_state.messages.append({"role": "bot", "text": reply})
+
+    # ---- Voice generation ----
+    tts = gTTS(text=reply, lang="ru")
+    tts.save("bot_voice.mp3")
+
+    # Encode to base64 for inline playback
+    with open("bot_voice.mp3", "rb") as f:
+        audio_bytes = f.read()
+        b64_audio = base64.b64encode(audio_bytes).decode()
+
+    # Play audio in Streamlit
+    audio_html = f"""
+        <audio autoplay>
+            <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+        </audio>
+    """
+    st.markdown(audio_html, unsafe_allow_html=True)
+
     try:
         st.rerun()
     except AttributeError:
         st.experimental_rerun()
+
+
 
