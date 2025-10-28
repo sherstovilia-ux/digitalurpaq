@@ -28,7 +28,7 @@ footer {visibility: hidden;}
     right: 20px;
     width: 120px;
     z-index: 10;
-    opacity: 0.5;
+    opacity: 0.7;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -40,7 +40,8 @@ def load_lottie_url(url):
         return None
     return r.json()
 
-lottie_robot = load_lottie_url("https://assets8.lottiefiles.com/packages/lf20_0yfsb3a1.json")
+# Robot-themed Lottie animation
+lottie_robot = load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_jy7d6hnf.json")
 
 # ---- Responses ----
 responses = {
@@ -92,7 +93,7 @@ col1, col2 = st.columns([5, 1])
 with col2:
     send = st.button("📩")
 
-# ---- Render background Lottie permanently ----
+# ---- Render robot animation in bottom-right corner ----
 lottie_placeholder = st.empty()
 with lottie_placeholder.container():
     st_lottie(lottie_robot, height=120, key="background_robot")
