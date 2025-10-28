@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 
 # ---- Page setup ----
 st.set_page_config(
@@ -8,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ---- Clean UI ----
+# ---- CSS for Clean UI + Robot Animation ----
 st.markdown("""
 <style>
 header {visibility: hidden;}
@@ -19,6 +20,16 @@ footer {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
+.robot-thinking {display: flex; align-items: center; justify-content: flex-start; gap: 4px; height: 20px; margin: 5px 0;}
+.robot-dot {width: 6px; height: 6px; background-color: #555; border-radius: 50%; animation: blink 1.4s infinite both;}
+.robot-dot:nth-child(1) { animation-delay: 0s; }
+.robot-dot:nth-child(2) { animation-delay: 0.2s; }
+.robot-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0; }
+  40% { opacity: 1; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,10 +82,21 @@ with col2:
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
+
+    # ---- Robot thinking animation ----
+    placeholder = st.empty()
+    with placeholder.container():
+        st.markdown('<div class="robot-thinking">'
+                    '<div class="robot-dot"></div>'
+                    '<div class="robot-dot"></div>'
+                    '<div class="robot-dot"></div>'
+                    '</div>', unsafe_allow_html=True)
+    time.sleep(1.5)  # simulate bot processing time
+    placeholder.empty()
+
+    # ---- Bot response ----
     message = user_msg.lower()
     reply = None
-
-    # Cabinet lookup
     if "кабинет" in message:
         for name, location in cabinet_map.items():
             if name in message:
@@ -91,5 +113,5 @@ if send and user_input:
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-
+    st.experimental_rerun()
 
