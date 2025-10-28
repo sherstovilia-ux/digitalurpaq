@@ -26,6 +26,11 @@ header, footer, #MainMenu {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
+#mic-indicator {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 10px;
+}
 .mic {
     display: inline-block;
     margin-left: 10px;
@@ -78,9 +83,8 @@ if "tts_enabled" not in st.session_state:
 if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 
-# ---- TTS ----
+# ---- Функция TTS ----
 def make_tts(text: str):
-    """Создаёт base64 mp3 из текста"""
     tts = gTTS(text=text, lang='ru', tld='com', slow=False)
     fp = BytesIO()
     tts.write_to_fp(fp)
@@ -103,9 +107,9 @@ send = st.button("Отправить")
 
 # ---- Логика ----
 if send and user_input:
-    user_msg = user_input.strip()
-    st.session_state.messages.append({"role": "user", "text": user_msg})
-    message = user_msg.lower()
+    msg = user_input.strip()
+    st.session_state.messages.append({"role": "user", "text": msg})
+    message = msg.lower()
     reply = None
 
     if "выключи голос" in message:
@@ -132,24 +136,27 @@ if send and user_input:
         reply = "Простите, я не понял команду. Напишите 'помощь'."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-
-    if st.session_state.tts_enabled:
-        st.session_state.pending_audio = make_tts(reply)
-    else:
-        st.session_state.pending_audio = None
-
+    st.session_state.pending_audio = make_tts(reply) if st.session_state.tts_enabled else None
     st.rerun()
 
-# ---- Проигрывание звука ----
+# ---- Воспроизведение ----
 if st.session_state.pending_audio:
     st.markdown("""
-        <div style='text-align:center; font-size:18px;'>🎤 <span class="mic">Говорю...</span></div>
+        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
     """, unsafe_allow_html=True)
     st.markdown(f"""
-        <audio autoplay>
+        <audio id="bot_audio" autoplay>
             <source src="{st.session_state.pending_audio}" type="audio/mp3">
         </audio>
+        <script>
+            const audio = document.getElementById('bot_audio');
+            audio.onended = () => {{
+                const mic = document.getElementById('mic-indicator');
+                if (mic) mic.style.display = 'none';
+            }};
+        </script>
     """, unsafe_allow_html=True)
-    # После воспроизведения очищаем, чтобы следующая реплика проигралась заново
+
+    # очищаем, чтобы не повторялось при следующем рендере
     st.session_state.pending_audio = None
 
