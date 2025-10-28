@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 from gtts import gTTS
 import base64
 from io import BytesIO
@@ -155,6 +154,7 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
-    st.experimental_rerun()
+    st.rerun()
+
 
 
