@@ -107,7 +107,9 @@ if send and user_input:
     # ---- TTS ----
     if st.session_state.voice_enabled:
         try:
-            tts = gTTS(text=reply, lang="ru", slow=False)
+            # Add text tweaks for robotic/male feel
+            robotic_text = " ".join(list(reply.upper()))  # spacing and uppercase for metallic feel
+            tts = gTTS(text=robotic_text, lang="ru", slow=False, tld="com.au")
             tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             tts.save(tmp_file.name)
             with open(tmp_file.name, "rb") as f:
@@ -120,6 +122,4 @@ if send and user_input:
             """, unsafe_allow_html=True)
         except Exception as e:
             st.warning(f"⚠️ Не удалось воспроизвести голос: {e}")
-
-    st.experimental_rerun()
 
