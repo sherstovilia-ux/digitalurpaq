@@ -2,6 +2,8 @@ import streamlit as st
 import time
 from streamlit_lottie import st_lottie
 import requests
+import json
+import os
 
 # ---- Page setup ----
 st.set_page_config(
@@ -33,7 +35,7 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Load Lottie ----
+# ---- Load Lottie animation ----
 def load_lottie_url(url):
     try:
         r = requests.get(url)
@@ -43,8 +45,17 @@ def load_lottie_url(url):
     except:
         return None
 
-# Robot-themed Lottie animation
-lottie_robot = load_lottie_url("https://assets5.lottiefiles.com/packages/lf20_jy7d6hnf.json")
+def load_lottie_local(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return None
+
+# Try network first, fallback to local
+lottie_robot = load_lottie_url("https://assets9.lottiefiles.com/packages/lf20_q5pk6p1k.json")
+if not lottie_robot:
+    lottie_robot = load_lottie_local("robot.json")  # Make sure this file exists
 
 # ---- Responses ----
 responses = {
@@ -100,9 +111,9 @@ with col2:
 if lottie_robot:
     st_lottie(lottie_robot, height=120, key="background_robot")
 else:
-    st.warning("🤖 Robot animation failed to load.")
+    st.warning("🤖 Robot animation failed to load. Please check your 'robot.json' file.")
 
-# ---- Logic ----
+# ---- Chat logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
@@ -130,3 +141,4 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
     render_chat()
+
