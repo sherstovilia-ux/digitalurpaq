@@ -1,7 +1,6 @@
 import streamlit as st
-import pyttsx3
+from gtts import gTTS
 import tempfile
-import os
 import base64
 
 # ---- Page setup ----
@@ -28,8 +27,8 @@ footer {visibility: hidden;}
 
 # ---- Responses ----
 responses = {
-    "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
+    "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "актовый зал": "🎭 В здании три актовых зала: первый над лобби, второй в левом крыле, третий в учебном блоке рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -53,21 +52,8 @@ cabinet_map = {
 # ---- Session state ----
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Голос включён. Скажите 'выключи голос', чтобы отключить звук."}]
-
 if "voice_enabled" not in st.session_state:
     st.session_state.voice_enabled = True
-
-# ---- Initialize pyttsx3 ----
-engine = pyttsx3.init()
-engine.setProperty("rate", 150)  # speed
-engine.setProperty("volume", 1.0)  # volume 0-1
-
-# Select a Russian voice if available
-voices = engine.getProperty("voices")
-for v in voices:
-    if "ru" in v.languages[0].decode().lower() or "russian" in v.name.lower():
-        engine.setProperty("voice", v.id)
-        break
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
@@ -100,6 +86,7 @@ if send and user_input:
     elif "включи голос" in message:
         st.session_state.voice_enabled = True
         reply = "🔊 Голос робота включен."
+    # Cabinet lookup
     elif "кабинет" in message:
         for name, location in cabinet_map.items():
             if name in message:
@@ -117,16 +104,12 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- Speak ----
+    # ---- TTS ----
     if st.session_state.voice_enabled:
         try:
-            # Save temporary audio file
+            tts = gTTS(text=reply, lang="ru", slow=False)
             tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            tmp_file.close()
-            engine.save_to_file(reply, tmp_file.name)
-            engine.runAndWait()
-
-            # Play in browser
+            tts.save(tmp_file.name)
             with open(tmp_file.name, "rb") as f:
                 audio_bytes = f.read()
                 b64_audio = base64.b64encode(audio_bytes).decode()
@@ -135,13 +118,8 @@ if send and user_input:
                     <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
                 </audio>
             """, unsafe_allow_html=True)
-            os.unlink(tmp_file.name)
         except Exception as e:
             st.warning(f"⚠️ Не удалось воспроизвести голос: {e}")
 
-    try:
-        st.rerun()
-    except AttributeError:
-        st.experimental_rerun()
-
+    st.experimental_rerun()
 
