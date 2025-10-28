@@ -28,12 +28,32 @@ footer {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
+@keyframes float {
+    0% { transform: translate(-50%, -50%) translateY(0px); }
+    50% { transform: translate(-50%, -50%) translateY(-20px); }
+    100% { transform: translate(-50%, -50%) translateY(0px); }
+}
+.background-gif {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.1;
+    z-index: -1;
+    width: 60%;
+    max-width: 800px;
+    animation: float 6s ease-in-out infinite;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Responses ----
+# ---- Background GIF ----
+gif_url = "https://pouch.jumpshare.com/download/axpntC92PREEszQGqRpYDYsQozCm8u_R4aMks2IliXGfKE9JvPSEd8SlniUCABmJYrM2_RxhjMfbVJ5fzwAGjUb8RfglIZAKwLGgTdX0m-4"
+st.markdown(f'<img src="{gif_url}" class="background-gif">', unsafe_allow_html=True)
+
+# ---- Predefined responses ----
 responses = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
@@ -49,7 +69,7 @@ cabinet_map = {
     "3д моделирования": "Кабинет 3D-моделирования — 2 этаж, IT-блок, правое крыло.",
     "роботы": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
     "вр": "VR-кабинет — 2 этаж, правое крыло.",
-    "програмирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
+    "программирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
     "анимирование": "Кабинет Анимирования — 2 этаж, правое крыло.",
     "экономика": "Кабинет Экономики — 2 этаж, правое крыло.",
     "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
@@ -64,14 +84,6 @@ if "tts_enabled" not in st.session_state:
 # ---- Title ----
 st.title("Digital Urpaq Support Bot")
 
-# ---- Display GIF ----
-gif_url = "https://jumpshare.com/s/vwHpRtMnhSxGcZORMFcZ"
-st.markdown(f"""
-    <div style="text-align:center;">
-        <img src="{gif_url}" height="200">
-    </div>
-""", unsafe_allow_html=True)
-
 # ---- Chat display ----
 chat_placeholder = st.empty()
 with chat_placeholder.container():
@@ -82,7 +94,7 @@ with chat_placeholder.container():
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ---- Input area ----
-user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...", key="text_input_box")
+user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...")
 send = st.button("Отправить")
 
 # ---- TTS helper ----
@@ -101,7 +113,7 @@ def speak(text: str):
         </audio>
     """, unsafe_allow_html=True)
 
-# ---- Logic ----
+# ---- Chat logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
