@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-from streamlit_lottie import st_lottie
 from gtts import gTTS
 import base64
 from io import BytesIO
@@ -12,6 +11,28 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# ---- Banner GIF ----
+banner_html = """
+<div class="banner">
+    <img src="https://d2n7fc0kw20ri7.cloudfront.net/3xumz%2Fpreview%2F72206457%2Fmain_large.gif?response-content-disposition=inline%3Bfilename%3D%22main_large.gif%22%3B&response-content-type=image%2Fgif&Expires=1761679960&Signature=LTOdJvOb7VmYh1hONy9u4bm1xysw5E2TsE~roe~D49iDScUu2DekV8cRSAcwseZlH~2mNhYfFRwd0ZXdrUh5IqUw2xPexLY1hZ8MwMV4-ovzaxEmJJTD3u62QVUV0VH9Pi1lXPWjdkk7csX3051L0H3hKbjwwKtCj2qe1K0w0x3fFQMPoIzxz7EN8NPCL6BPI9zTrBYHiRAEb6q01H0GHYV3oXXyx1whltJmMehSPZDVDmDJLMNhd6XWPuiAuKYC6as~7Kx1aPRWEk6lewC6VynYeIzJX0J7rwDlwXTIEv2f3eOKG81nACnV1YA5gnL36Qiwd3N3qBCYpLBIM4GEJQ__&Key-Pair-Id=APKAJT5WQLLEOADKLHBQ" alt="Banner Image">
+</div>
+<style>
+    .banner {
+        width: 100%;
+        height: auto;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    .banner img {
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+</style>
+"""
+st.markdown(banner_html, unsafe_allow_html=True)
 
 # ---- Clean UI ----
 st.markdown("""
@@ -33,20 +54,6 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Lottie helper ----
-def load_lottie_url(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-# ---- Load robot animation ----
-lottie_robot = load_lottie_url("https://assets10.lottiefiles.com/packages/lf20_j1adxtyb.json")
-if lottie_robot:
-    st_lottie(lottie_robot, height=120, key="background_robot")
-else:
-    st.warning("Robot animation failed to load.")
-
 # ---- Responses ----
 responses = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
@@ -65,7 +72,7 @@ cabinet_map = {
     "3д моделирования": "Кабинет 3D-моделирования — 2 этаж, IT-блок, правое крыло.",
     "роботы": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
     "вр": "VR-кабинет — 2 этаж, правое крыло.",
-    "программирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
+    "програмирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
     "анимирование": "Кабинет Анимирования — 2 этаж, правое крыло.",
     "экономика": "Кабинет Экономики — 2 этаж, правое крыло.",
     "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
@@ -97,7 +104,7 @@ user_input = st.text_input(
 )
 send = st.button("Отправить")
 
-# ---- TTS helper ----
+# ---- Text-to-Speech helper ----
 def speak(text: str):
     if not st.session_state.tts_enabled:
         return
@@ -113,7 +120,7 @@ def speak(text: str):
         </audio>
     """, unsafe_allow_html=True)
 
-# ---- Chat logic ----
+# ---- Chatbot logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
@@ -147,6 +154,4 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     speak(reply)
     st.experimental_rerun()
-
-
 
