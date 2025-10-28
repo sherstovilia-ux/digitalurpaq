@@ -1,13 +1,38 @@
 import streamlit as st
 
-st.set_page_config(page_title="Digital Urpaq Support Bot", page_icon="🤖")
+st.set_page_config(
+    page_title="Digital Urpaq Support Bot",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
+# 🧼 Hide Streamlit's default UI elements (top menu, footer, etc.)
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        [data-testid="stToolbar"] {visibility: hidden !important;}
+        [data-testid="stStatusWidget"] {display: none;}
+        [data-testid="stDecoration"] {display: none;}
+        [data-testid="stHeader"] {display: none;}
+        [data-testid="stSidebar"] {display: none;}
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 0rem;
+        }
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# The rest of your code:
 st.title("🤖 Помощник Digital Urpaq")
 st.write("Напишите вопрос о кабинетах, контактах или записи.")
 
 responses = {
     "контакты": "📞 Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "🎭 В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
+    "актовый зал": "В здании три актовых зала: первый — над лобби (через правые или левые лестницы), второй — в левом крыле, где раздевалка, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "🧭 Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "🗓️ Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -51,4 +76,3 @@ if st.button("Отправить"):
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
     st.markdown(f"**🤖 Ответ:** {reply}")
-
