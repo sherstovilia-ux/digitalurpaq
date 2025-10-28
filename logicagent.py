@@ -6,42 +6,23 @@ from io import BytesIO
 # ---- Page setup ----
 st.set_page_config(
     page_title="Digital Urpaq Support Bot",
-    page_icon=None,
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ---- Banner GIF ----
-banner_html = """
+# ---- Banner ----
+st.markdown("""
 <div class="banner">
     <img src="https://s12.gifyu.com/images/b36xz.gif" alt="Robot Banner">
 </div>
 <style>
-    .banner {
-        width: 100%;
-        height: auto;
-        overflow: hidden;
-        margin-bottom: 20px;
-        text-align: center;
-    }
-    .banner img {
-        width: 100%;
-        height: auto;
-        max-height: 300px;
-        object-fit: cover;
-        border-radius: 8px;
-    }
-</style>
-"""
-st.markdown(banner_html, unsafe_allow_html=True)
-
-# ---- Clean UI ----
-st.markdown("""
-<style>
-header {visibility: hidden;}
-footer {visibility: hidden;}
-#MainMenu {visibility: hidden;}
-.block-container {padding-top: 1rem; padding-bottom: 1rem;}
+.banner img {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+header, footer, #MainMenu {visibility: hidden;}
 .chat-bubble {
     border-radius: 20px;
     padding: 10px 15px;
@@ -55,7 +36,7 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Responses ----
+# ---- Ответы ----
 responses = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
@@ -79,59 +60,45 @@ cabinet_map = {
     "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
 }
 
-# ---- Session state ----
+# ---- Session ----
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "bot", "text": "Привет! Я ваш помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
+    st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
 
-# ---- Title ----
-st.title("Digital Urpaq Support Bot")
+# ---- Заголовок ----
+st.title("🤖 Digital Urpaq Support Bot")
 
-# ---- Chat display ----
-chat_placeholder = st.empty()
-with chat_placeholder.container():
+# ---- Отображение чата ----
+with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
-        bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
-        st.markdown(f'<div class="chat-bubble {bubble_class}">{msg["text"]}</div>', unsafe_allow_html=True)
+        bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+        st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- Input area ----
-user_input = st.text_input(
-    "Ваш вопрос:",
-    placeholder="Напишите сообщение...",
-    key="text_input_box"
-)
+# ---- Ввод ----
+user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...")
 send = st.button("Отправить")
 
-# ---- TTS helper ----
-def speak(text: str):
-    if not st.session_state.tts_enabled:
-        return
+# ---- Функция TTS ----
+def speak(text):
     tts = gTTS(text=text, lang='ru', tld='com', slow=False)
     fp = BytesIO()
     tts.write_to_fp(fp)
     fp.seek(0)
     audio_bytes = fp.read()
-    b64_audio = base64.b64encode(audio_bytes).decode()
+    b64 = base64.b64encode(audio_bytes).decode()
+    st.session_state.last_audio = f"data:audio/mp3;base64,{b64}"
 
-    # --- JavaScript autoplay workaround ---
-    st.markdown(f"""
-        <script>
-            var audio = new Audio("data:audio/mp3;base64,{b64_audio}");
-            audio.play().catch(e => console.log('Autoplay blocked:', e));
-        </script>
-    """, unsafe_allow_html=True)
-
-# ---- Logic ----
+# ---- Логика ----
 if send and user_input:
-    user_msg = user_input.strip()
-    st.session_state.messages.append({"role": "user", "text": user_msg})
+    message = user_input.strip().lower()
+    st.session_state.messages.append({"role": "user", "text": user_input})
 
-    message = user_msg.lower()
     reply = None
-
     if "выключи голос" in message:
         st.session_state.tts_enabled = False
         reply = "Голос отключен."
@@ -156,13 +123,17 @@ if send and user_input:
         reply = "Простите, я не понял команду. Напишите 'помощь'."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-    speak(reply)
+
+    if st.session_state.tts_enabled:
+        speak(reply)
+
     st.rerun()
 
-    st.session_state.messages.append({"role": "bot", "text": reply})
-    speak(reply)
-    st.rerun()
-
-
-
+# ---- Воспроизведение аудио ----
+if st.session_state.last_audio and st.session_state.tts_enabled:
+    st.markdown(f"""
+        <audio autoplay controls style="width: 100%; margin-top:10px;">
+            <source src="{st.session_state.last_audio}" type="audio/mp3">
+        </audio>
+    """, unsafe_allow_html=True)
 
