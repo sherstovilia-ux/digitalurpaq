@@ -1,7 +1,8 @@
 import streamlit as st
 from gtts import gTTS
+from pydub import AudioSegment
+from pydub.effects import speedup
 import base64
-import os
 
 # ---- Page setup ----
 st.set_page_config(
@@ -66,9 +67,12 @@ cabinet_map = {
 
 # ---- Session state ----
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Голос включён. Скажите 'выключи голос', чтобы отключить звук."}]
+    st.session_state.messages = [{
+        "role": "bot", 
+        "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Голос включён. Скажите 'выключи голос', чтобы отключить звук."
+    }]
 
-# Voice ON by default
+# Voice auto-enabled
 if "voice_enabled" not in st.session_state:
     st.session_state.voice_enabled = True
 
@@ -99,7 +103,7 @@ if send and user_input:
     message = user_msg.lower().strip()
     reply = None
 
-    # ---- Voice control commands ----
+    # Voice control commands
     if "выключи голос" in message:
         st.session_state.voice_enabled = False
         reply = "🔇 Голос робота выключен."
@@ -125,16 +129,22 @@ if send and user_input:
     # Add bot message
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- Voice playback (if enabled) ----
+    # ---- Robotic TTS ----
     if st.session_state.voice_enabled:
         try:
+            # Russian TTS
             tts = gTTS(text=reply, lang="ru")
             tts.save("bot_voice.mp3")
 
-            with open("bot_voice.mp3", "rb") as f:
+            # Make it robotic
+            sound = AudioSegment.from_file("bot_voice.mp3", format="mp3")
+            robot_sound = speedup(sound, playback_speed=1.2)
+            robot_sound.export("bot_voice_robot.mp3", format="mp3")
+
+            # Play in browser
+            with open("bot_voice_robot.mp3", "rb") as f:
                 audio_bytes = f.read()
                 b64_audio = base64.b64encode(audio_bytes).decode()
-
             audio_html = f"""
                 <audio autoplay>
                     <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
@@ -142,10 +152,12 @@ if send and user_input:
             """
             st.markdown(audio_html, unsafe_allow_html=True)
         except Exception as e:
-            st.warning("⚠️ Не удалось воспроизвести голос. Проверьте подключение к интернету.")
+            st.warning(f"⚠️ Не удалось воспроизвести голос: {e}")
 
     try:
         st.rerun()
     except AttributeError:
         st.experimental_rerun()
+
+
 
