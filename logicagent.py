@@ -1,7 +1,4 @@
 import streamlit as st
-from gtts import gTTS
-import tempfile
-import base64
 
 # ---- Page setup ----
 st.set_page_config(
@@ -51,9 +48,7 @@ cabinet_map = {
 
 # ---- Session state ----
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Голос включён. Скажите 'выключи голос', чтобы отключить звук."}]
-if "voice_enabled" not in st.session_state:
-    st.session_state.voice_enabled = True
+    st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
@@ -79,15 +74,8 @@ if send and user_input:
     message = user_msg.lower()
     reply = None
 
-    # Voice control
-    if "выключи голос" in message:
-        st.session_state.voice_enabled = False
-        reply = "🔇 Голос робота выключен."
-    elif "включи голос" in message:
-        st.session_state.voice_enabled = True
-        reply = "🔊 Голос робота включен."
     # Cabinet lookup
-    elif "кабинет" in message:
+    if "кабинет" in message:
         for name, location in cabinet_map.items():
             if name in message:
                 reply = location
@@ -104,22 +92,4 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- TTS ----
-    if st.session_state.voice_enabled:
-        try:
-            # Add text tweaks for robotic/male feel
-            robotic_text = " ".join(list(reply.upper()))  # spacing and uppercase for metallic feel
-            tts = gTTS(text=robotic_text, lang="ru", slow=False, tld="com.au")
-            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            tts.save(tmp_file.name)
-            with open(tmp_file.name, "rb") as f:
-                audio_bytes = f.read()
-                b64_audio = base64.b64encode(audio_bytes).decode()
-            st.markdown(f"""
-                <audio autoplay>
-                    <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
-                </audio>
-            """, unsafe_allow_html=True)
-        except Exception as e:
-            st.warning(f"⚠️ Не удалось воспроизвести голос: {e}")
 
