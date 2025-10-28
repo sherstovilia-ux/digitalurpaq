@@ -64,12 +64,17 @@ if "messages" not in st.session_state:
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
 chat_placeholder = st.empty()
-with chat_placeholder.container():
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    for msg in st.session_state.messages:
-        bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
-        st.markdown(f'<div class="chat-bubble {bubble_class}">{msg["text"]}</div>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+
+def render_chat():
+    chat_placeholder.empty()
+    with chat_placeholder.container():
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        for msg in st.session_state.messages:
+            bubble_class = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+            st.markdown(f'<div class="chat-bubble {bubble_class}">{msg["text"]}</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+render_chat()
 
 # ---- Input area ----
 st.markdown("---")
@@ -113,5 +118,6 @@ if send and user_input:
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-    st.experimental_rerun()
+    render_chat()
+
 
