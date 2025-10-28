@@ -30,16 +30,10 @@ header, footer, #MainMenu {visibility: hidden;}
     text-align: center;
     font-size: 18px;
     margin-top: 10px;
-    opacity: 1;
-    transition: opacity 1s ease-out;
 }
-.mic-icon {
+.mic {
     display: inline-block;
-    width: 14px;
-    height: 14px;
-    background-color: red;
-    border-radius: 50%;
-    margin-left: 8px;
+    margin-left: 10px;
     animation: pulse 1s infinite;
 }
 @keyframes pulse {
@@ -147,20 +141,21 @@ if send and user_input:
 
 # ---- Воспроизведение ----
 if st.session_state.pending_audio:
-    audio_html = f"""
-    <div id="mic-container">
-      <div id="mic-indicator">Говорю... <span class="mic-icon"></span></div>
-      <audio id="bot_audio" autoplay>
-          <source src="{st.session_state.pending_audio}" type="audio/mp3">
-      </audio>
-      <script>
-          const mic = parent.document.getElementById('mic-indicator');
-          const audio = document.getElementById('bot_audio');
-          audio.onended = () => {{
-              if (mic) mic.style.opacity = '0';  // плавный fade-out через CSS transition
-          }};
-      </script>
-    </div>
-    """
-    st.components.v1.html(audio_html, height=100)
+    st.markdown("""
+        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
+    """, unsafe_allow_html=True)
+    st.markdown(f"""
+        <audio id="bot_audio" autoplay>
+            <source src="{st.session_state.pending_audio}" type="audio/mp3">
+        </audio>
+        <script>
+            const audio = document.getElementById('bot_audio');
+            audio.onended = () => {{
+                const mic = document.getElementById('mic-indicator');
+                if (mic) mic.style.display = 'none';
+            }};
+        </script>
+    """, unsafe_allow_html=True)
+
+    # очищаем, чтобы не повторялось при следующем рендере
     st.session_state.pending_audio = None
