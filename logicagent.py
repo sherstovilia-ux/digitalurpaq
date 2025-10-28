@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ---- CSS for Clean UI ----
+# ---- CSS ----
 st.markdown("""
 <style>
 header {visibility: hidden;}
@@ -21,18 +21,25 @@ footer {visibility: hidden;}
 .chat-bubble {border-radius: 20px; padding: 10px 15px; margin: 8px 0; max-width: 80%; word-wrap: break-word;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
-.chat-container {display: flex; flex-direction: column;}
+.chat-container {display: flex; flex-direction: column; position: relative;}
+.background-lottie {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 120px;
+    z-index: 10;
+    opacity: 0.5;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Load Lottie animation ----
+# ---- Load Lottie ----
 def load_lottie_url(url):
     r = requests.get(url)
     if r.status_code != 200:
         return None
     return r.json()
 
-# Example Lottie URL for robot thinking
 lottie_robot = load_lottie_url("https://assets8.lottiefiles.com/packages/lf20_0yfsb3a1.json")
 
 # ---- Responses ----
@@ -85,19 +92,20 @@ col1, col2 = st.columns([5, 1])
 with col2:
     send = st.button("📩")
 
+# ---- Render background Lottie permanently ----
+lottie_placeholder = st.empty()
+with lottie_placeholder.container():
+    st_lottie(lottie_robot, height=120, key="background_robot")
+
 # ---- Logic ----
 if send and user_input:
     user_msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": user_msg})
 
-    # ---- Robot Lottie animation ----
-    placeholder = st.empty()
-    with placeholder.container():
-        st_lottie(lottie_robot, height=100)
-    time.sleep(1.5)  # simulate bot processing time
-    placeholder.empty()
+    # Simulate thinking
+    time.sleep(1.5)
 
-    # ---- Bot response ----
+    # Determine reply
     message = user_msg.lower()
     reply = None
     if "кабинет" in message:
@@ -117,6 +125,4 @@ if send and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
     render_chat()
-
-
 
