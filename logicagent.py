@@ -1,4 +1,7 @@
 import streamlit as st
+from gtts import gTTS
+import base64
+import os
 
 # ---- Page setup ----
 st.set_page_config(
@@ -8,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ---- Clean UI (hides Streamlit header/footer) ----
+# ---- Clean UI ----
 st.markdown("""
     <style>
         header {visibility: hidden;}
@@ -64,9 +67,15 @@ cabinet_map = {
 # ---- Session state ----
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! 🤖 Я ваш помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
+if "voice_enabled" not in st.session_state:
+    st.session_state.voice_enabled = False
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
+
+# Voice toggle in sidebar
+st.sidebar.header("⚙️ Настройки")
+st.session_state.voice_enabled = st.sidebar.toggle("🔊 Включить голос робота", value=st.session_state.voice_enabled)
 
 chat_placeholder = st.empty()
 with chat_placeholder.container():
@@ -108,10 +117,27 @@ if send and user_input:
     if not reply:
         reply = "❓ Простите, я не понял команду. Напишите 'помощь'."
 
+    # Add bot message
     st.session_state.messages.append({"role": "bot", "text": reply})
+
+    # ---- Voice (if enabled) ----
+    if st.session_state.voice_enabled:
+        tts = gTTS(text=reply, lang="ru")
+        tts.save("bot_voice.mp3")
+
+        with open("bot_voice.mp3", "rb") as f:
+            audio_bytes = f.read()
+            b64_audio = base64.b64encode(audio_bytes).decode()
+
+        audio_html = f"""
+            <audio autoplay>
+                <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+            </audio>
+        """
+        st.markdown(audio_html, unsafe_allow_html=True)
+
     try:
         st.rerun()
     except AttributeError:
         st.experimental_rerun()
-
 
