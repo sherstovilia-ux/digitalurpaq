@@ -24,7 +24,7 @@ header, footer, #MainMenu {visibility: hidden;}
 }
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
-.chat-container {display: flex; flex-direction: column;}
+.chat-container {display: flex; flex-direction: column; max-height: 500px; overflow-y: auto;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -100,14 +100,22 @@ def make_tts_bytes(text: str, lang_code: str):
     )
     return io.BytesIO(response.audio_content)
 
-# ---- Chat UI ----
+# ---- Chat UI с автопрокруткой ----
 st.title("🤖 Digital Urpaq Support Bot")
-with st.container():
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+chat_placeholder = st.empty()
+
+with chat_placeholder.container():
+    st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
         bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("""
+        <script>
+            var chatDiv = document.getElementById("chat-container");
+            if (chatDiv) { chatDiv.scrollTop = chatDiv.scrollHeight; }
+        </script>
+    """, unsafe_allow_html=True)
 
 # ---- Input Form ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
@@ -141,7 +149,6 @@ if submit_button and user_input:
                 break
         if not found:
             reply = "Уточните, пожалуйста, какой кабинет?" if lang_code=="ru" else "Қай кабинетті қажет ететінін нақтылаңыз?"
-    # Другие команды
     else:
         found = False
         for k, v in responses.items():
@@ -159,9 +166,6 @@ if submit_button and user_input:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
-    # Очистить поле ввода после отправки
     st.session_state.user_input = ""
     st.experimental_rerun()
-
-
 
