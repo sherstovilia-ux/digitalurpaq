@@ -1,2 +1,4 @@
-streamlit==1.39.0
-pyttsx3==2.90
+streamlit==1.30.0
+TTS==0.14.1
+soundfile==0.12.1
+numpy==1.26.0
