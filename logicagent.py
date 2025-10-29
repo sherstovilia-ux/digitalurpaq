@@ -56,7 +56,7 @@ with col2:
             "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
             else "Язык переключён на русский."
         })
-        st.experimental_rerun()
+        st.experimental_rerun()  # безопасно, так как вызывается после клика
 
 # ---- Responses ----
 responses_ru = {
@@ -162,4 +162,5 @@ if submit_button and user_input:
     # Очистить поле ввода после отправки
     st.session_state.user_input = ""
     st.experimental_rerun()
+
 
