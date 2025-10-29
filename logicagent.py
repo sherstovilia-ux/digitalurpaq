@@ -101,35 +101,44 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- TTS Function (Google Cloud, male voices) ----
+# ---- ✅ Google Cloud TTS Function (RU + KZ) ----
 def make_tts(text: str, lang_code: str):
     client = texttospeech.TextToSpeechClient()
 
     if lang_code == "kk":
         language = "kk-KZ"
-        voice_name = "kk-KZ-Standard-B"  # мужской
+        voice_name = "kk-KZ-Standard-A"
     else:
         language = "ru-RU"
-        voice_name = "ru-RU-Standard-D"  # мужской
+        voice_name = "ru-RU-Standard-D"
 
     synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
+    voice_params = texttospeech.VoiceSelectionParams(
         language_code=language,
         name=voice_name,
-        ssml_gender=texttospeech.SsmlVoiceGender.MALE
+        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
     )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
-    )
+    audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
+    try:
+        response = client.synthesize_speech(
+            input=synthesis_input, voice=voice_params, audio_config=audio_config
+        )
+    except Exception:
+        # fallback на русский голос, если казахский не поддерживается
+        fallback_voice = texttospeech.VoiceSelectionParams(
+            language_code="ru-RU",
+            name="ru-RU-Standard-D",
+            ssml_gender=texttospeech.SsmlVoiceGender.MALE
+        )
+        response = client.synthesize_speech(
+            input=synthesis_input, voice=fallback_voice, audio_config=audio_config
+        )
 
     b64 = base64.b64encode(response.audio_content).decode()
     return f"data:audio/mp3;base64,{b64}"
 
-# ---- Chat Display ----
+# ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
 
 with st.container():
@@ -139,7 +148,7 @@ with st.container():
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- User Input ----
+# ---- Input ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
 user_input = st.text_input(placeholder, placeholder=placeholder)
 send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
@@ -176,8 +185,13 @@ if send and user_input:
             if k in message:
                 reply = v
                 break
+
     if not reply:
-        reply = "Простите, я не понял команду. Напишите 'помощь'." if st.session_state.lang == "ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
+        reply = (
+            "Простите, я не понял команду. Напишите 'помощь'."
+            if st.session_state.lang == "ru"
+            else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
+        )
 
     st.session_state.messages.append({"role": "bot", "text": reply})
     st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
@@ -202,6 +216,4 @@ if st.session_state.pending_audio:
     """, unsafe_allow_html=True)
 
     st.session_state.pending_audio = None
-
-
 
