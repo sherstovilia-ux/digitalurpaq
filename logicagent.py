@@ -51,31 +51,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Ответы ----
-responses = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
-    "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
-    "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
-}
-
-cabinet_map = {
-    "лего": "Кабинет LEGO-конструирования — 1 этаж, правое крыло, третий справа от входа.",
-    "физика": "Кабинет Физики — левое крыло, 3 этаж, рядом с Астрономией.",
-    "шахматы": "Кабинет Шахмат — правое крыло, 1 этаж, рядом с Лего.",
-    "биология": "Кабинет Биологии — 3 этаж, центральная часть, блок Д1.",
-    "электрика": "Кабинет Электротехники — 2 этаж, правое крыло.",
-    "дроны": "Кабинет Дронов — 2 этаж, правое крыло.",
-    "3д моделирования": "Кабинет 3D-моделирования — 2 этаж, IT-блок, правое крыло.",
-    "роботы": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора.",
-    "вр": "VR-кабинет — 2 этаж, правое крыло.",
-    "програмирование": "Кабинет Программирования — 2 этаж, дальнее правое крыло.",
-    "анимирование": "Кабинет Анимирования — 2 этаж, правое крыло.",
-    "экономика": "Кабинет Экономики — 2 этаж, правое крыло.",
-    "рисование": "Кабинет Рисования — 3 этаж, правое крыло.",
-}
-
-# ---- Session ----
+# ---- Session state ----
+if "lang" not in st.session_state:
+    st.session_state.lang = "ru"  # по умолчанию русский
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 if "tts_enabled" not in st.session_state:
@@ -83,17 +61,52 @@ if "tts_enabled" not in st.session_state:
 if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 
-# ---- Функция TTS ----
-def make_tts(text: str):
-    tts = gTTS(text=text, lang='ru', tld='com', slow=False)
+# ---- Language switcher ----
+col1, col2 = st.columns([4, 1])
+with col2:
+    if st.button("Қаз / Рус"):
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        st.session_state.messages.append({
+            "role": "bot",
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
+        })
+        st.rerun()
+
+# ---- Responses ----
+responses_ru = {
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
+    "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
+    "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
+}
+responses_kk = {
+    "байланыс": "Мекенжай: Жамбыл Жабаев көш., 55А, Петропавл. Телефон: 8 7152 34-02-40. Толығырақ: https://digitalurpaq.edu.kz/kk/kkbajlanysrukontakty.html",
+    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанындағы оқу блогында.",
+    "көмек": "Қолжетімді командалар: кабинет <атауы>, байланыс, акт залы, жазылу, көмек.",
+    "жазылу": "Онлайн нысан: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
+}
+
+cabinet_map_ru = {
+    "лего": "Кабинет LEGO-конструирования — 1 этаж, правое крыло, третий справа от входа.",
+    "физика": "Кабинет Физики — левое крыло, 3 этаж, рядом с Астрономией.",
+}
+cabinet_map_kk = {
+    "лего": "LEGO-құрастыру кабинеті — 1 қабат, оң жақ қанат, кіреберістен үшінші есік.",
+    "физика": "Физика кабинеті — сол жақ қанат, 3 қабат, Астрономия кабинетімен қатар.",
+}
+
+# ---- TTS function ----
+def make_tts(text: str, lang_code: str):
+    tts = gTTS(text=text, lang=lang_code, tld='com', slow=False)
     fp = BytesIO()
     tts.write_to_fp(fp)
     fp.seek(0)
     b64 = base64.b64encode(fp.read()).decode()
     return f"data:audio/mp3;base64,{b64}"
 
-# ---- Отображение чата ----
+# ---- Chat display ----
 st.title("🤖 Digital Urpaq Support Bot")
+
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
@@ -101,45 +114,52 @@ with st.container():
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- Ввод ----
-user_input = st.text_input("Ваш вопрос:", placeholder="Напишите сообщение...")
-send = st.button("Отправить")
+# ---- User input ----
+placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
+user_input = st.text_input(placeholder, placeholder=placeholder)
+send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
 
-# ---- Логика ----
+# ---- Logic ----
 if send and user_input:
     msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
-    if "выключи голос" in message:
+    if st.session_state.lang == "ru":
+        responses = responses_ru
+        cabinet_map = cabinet_map_ru
+        lang_code = "ru"
+    else:
+        responses = responses_kk
+        cabinet_map = cabinet_map_kk
+        lang_code = "kk"
+
+    # команды
+    if ("выключи голос" in message) or ("дыбысты сөндір" in message):
         st.session_state.tts_enabled = False
-        reply = "Голос отключен."
-    elif "включи голос" in message:
+        reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
+    elif ("включи голос" in message) or ("дыбысты қос" in message):
         st.session_state.tts_enabled = True
-        reply = "Голос включен."
-    elif "актовый зал" in message:
-        reply = responses["актовый зал"]
-    elif "кабинет" in message:
+        reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
+    elif any(k in message for k in cabinet_map.keys()):
         for k, v in cabinet_map.items():
             if k in message:
                 reply = v
                 break
-        if not reply:
-            reply = "Уточните название кабинета."
     else:
         for k, v in responses.items():
             if k in message:
                 reply = v
                 break
     if not reply:
-        reply = "Простите, я не понял команду. Напишите 'помощь'."
+        reply = "Простите, я не понял команду. Напишите 'помощь'." if st.session_state.lang == "ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-    st.session_state.pending_audio = make_tts(reply) if st.session_state.tts_enabled else None
+    st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
     st.rerun()
 
-# ---- Воспроизведение ----
+# ---- Audio playback ----
 if st.session_state.pending_audio:
     st.markdown("""
         <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
@@ -157,5 +177,4 @@ if st.session_state.pending_audio:
         </script>
     """, unsafe_allow_html=True)
 
-    # очищаем, чтобы не повторялось при следующем рендере
     st.session_state.pending_audio = None
