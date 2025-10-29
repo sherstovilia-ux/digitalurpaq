@@ -24,7 +24,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Session State Initialization ----
+# ---- Session State ----
 if "lang" not in st.session_state:
     st.session_state.lang = "ru"
 if "messages" not in st.session_state:
@@ -47,7 +47,7 @@ with col2:
             "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk"
                     else "Язык переключён на русский."
         })
-        st.session_state.rerun_needed = True  # флаг безопасного rerun
+        st.session_state.rerun_needed = True  # безопасный rerun через флаг
 
 # ---- Responses ----
 responses_ru = {
