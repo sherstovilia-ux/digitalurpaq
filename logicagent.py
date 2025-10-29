@@ -1,115 +1,187 @@
 import streamlit as st
-from google.cloud import texttospeech
+from gtts import gTTS
 import base64
+from io import BytesIO
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
 
-# ---- Session state ----
+# ---- CSS ----
+st.markdown("""
+<style>
+header, footer, #MainMenu {visibility: hidden;}
+.banner img {
+    width: 100%;
+    max-height: 250px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+.chat-bubble {
+    border-radius: 20px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+.user-bubble {background-color: #DCF8C6; align-self: flex-end;}
+.bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
+.chat-container {display: flex; flex-direction: column;}
+#mic-indicator {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 10px;
+}
+.mic {
+    display: inline-block;
+    margin-left: 10px;
+    animation: pulse 1s infinite;
+}
+@keyframes pulse {
+    0% {transform: scale(1); opacity: 1;}
+    50% {transform: scale(1.3); opacity: 0.5;}
+    100% {transform: scale(1); opacity: 1;}
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---- Banner ----
+st.markdown("""
+<div class="banner">
+    <img src="https://s12.gifyu.com/images/b36xz.gif" alt="Banner">
+</div>
+""", unsafe_allow_html=True)
+
+# ---- Session ----
 if "lang" not in st.session_state:
     st.session_state.lang = "ru"
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role":"bot","text":"Привет! Я помощник Digital Urpaq."}]
+    st.session_state.messages = [{
+        "role": "bot",
+        "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."
+    }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
 if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 
-# ---- Language toggle ----
-col1, col2 = st.columns([4,1])
+# ---- Language Switcher ----
+col1, col2 = st.columns([4, 1])
 with col2:
     if st.button("Қаз / Рус"):
-        st.session_state.lang = "kk" if st.session_state.lang=="ru" else "ru"
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
         st.session_state.messages.append({
-            "role":"bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk" else "Язык переключён на русский."
+            "role": "bot",
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
         })
+        st.experimental_rerun()
 
-# ---- TTS ----
-def make_tts(text, lang_code):
-    client = texttospeech.TextToSpeechClient()
-
-    voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
-    language_code = "kk-KZ" if lang_code=="kk" else "ru-RU"
-
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=language_code,
-        name=voice_name,
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-    )
-    audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-
-    response = client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
-    b64 = base64.b64encode(response.audio_content).decode()
-    return f"data:audio/mp3;base64,{b64}"
-
-# ---- Chat display ----
-st.title("🤖 Digital Urpaq Support Bot")
-for msg in st.session_state.messages:
-    style = "text-align:right; background:#DCF8C6;padding:10px;border-radius:15px;" if msg["role"]=="user" else "text-align:left; background:#F1F0F0;padding:10px;border-radius:15px;"
-    st.markdown(f'<div style="{style}">{msg["text"]}</div>', unsafe_allow_html=True)
-
-# ---- Input ----
-placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang=="kk" else "Ваш вопрос:"
-user_input = st.text_input(placeholder, placeholder=placeholder)
-send = st.button("Жіберу" if st.session_state.lang=="kk" else "Отправить")
-
-# ---- Simple responses ----
+# ---- Responses ----
 responses_ru = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40.",
-    "актовый зал": "В здании три актовых зала.",
-    "помощь": "Команды: кабинет <название>, контакты, актовый зал, помощь."
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
+    "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
+    "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
+    "кабинет": "Уточните, какой кабинет вас интересует."
 }
 responses_kk = {
-    "байланыс": "Мекенжай: Жамбыл Жабаев көш., 55А, Петропавл.",
-    "акт залы": "Ғимаратта үш акт залы бар.",
-    "көмек": "Қол жетімді командалар: кабинет <атауы>, байланыс, акт залы, көмек."
+    "байланыс": "Мекенжай: Жамбыл Жабаев көш., 55А, Петропавл. Телефон: 8 7152 34-02-40. Толығырақ: https://digitalurpaq.edu.kz/kk/kkbajlanysrukontakty.html",
+    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанындағы оқу блогында.",
+    "көмек": "Қолжетімді командалар: кабинет <атауы>, байланыс, акт залы, жазылу, көмек.",
+    "жазылу": "Онлайн нысан: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
+    "кабинет": "Қай кабинетті білгіңіз келетіні нақтылаңыз."
 }
-cabinet_map_ru = {"физика":"Кабинет Физики — 3 этаж."}
-cabinet_map_kk = {"физика":"Физика кабинеті — 3 қабат."}
 
-# ---- Handle user input ----
+cabinet_map_ru = {
+    "лего": "Кабинет LEGO-конструирования — 1 этаж, правое крыло, третий справа от входа.",
+    "физика": "Кабинет Физики — левое крыло, 3 этаж, рядом с Астрономией.",
+    "робототехника": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора."
+}
+cabinet_map_kk = {
+    "лего": "LEGO-құрастыру кабинеті — 1 қабат, оң жақ қанат, кіреберістен үшінші есік.",
+    "физика": "Физика кабинеті — сол жақ қанат, 3 қабат, Астрономия кабинетімен қатар.",
+    "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
+}
+
+# ---- ✅ gTTS Function ----
+def make_tts(text: str, lang_code: str):
+    tts_lang = "kk" if lang_code=="kk" else "ru"
+    tts = gTTS(text=text, lang=tts_lang)
+    buf = BytesIO()
+    tts.write_to_fp(buf)
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode()
+    return f"data:audio/mp3;base64,{b64}"
+
+# ---- Chat UI ----
+st.title("🤖 Digital Urpaq Support Bot")
+with st.container():
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    for msg in st.session_state.messages:
+        bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+        st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ---- Input ----
+placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
+user_input = st.text_input(placeholder, placeholder=placeholder)
+send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
+
+# ---- Logic ----
 if send and user_input:
     msg = user_input.strip()
-    st.session_state.messages.append({"role":"user","text":msg})
+    st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
-    responses = responses_kk if st.session_state.lang=="kk" else responses_ru
-    cabinet_map = cabinet_map_kk if st.session_state.lang=="kk" else cabinet_map_ru
-    lang_code = "kk" if st.session_state.lang=="kk" else "ru"
-
-    if "кабинет" in message:
-        found = False
-        for k,v in cabinet_map.items():
-            if k in message:
-                reply = v
-                found = True
-                break
-        if not found:
-            reply = "Уточните кабинет?" if lang_code=="ru" else "Қай кабинет екенін нақтылаңызшы?"
+    if st.session_state.lang == "ru":
+        responses = responses_ru
+        cabinet_map = cabinet_map_ru
+        lang_code = "ru"
     else:
+        responses = responses_kk
+        cabinet_map = cabinet_map_kk
+        lang_code = "kk"
+
+    if ("выключи голос" in message) or ("дыбысты сөндір" in message):
+        st.session_state.tts_enabled = False
+        reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
+    elif ("включи голос" in message) or ("дыбысты қос" in message):
+        st.session_state.tts_enabled = True
+        reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
+    elif "кабинет" in message:
         found = False
-        for k,v in responses.items():
+        for k, v in cabinet_map.items():
             if k in message:
                 reply = v
                 found = True
                 break
         if not found:
-            reply = "Не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Түсінбедім. 'Көмек' деп жазыңыз."
+            reply = responses["кабинет"]
+    else:
+        for k, v in responses.items():
+            if k in message:
+                reply = v
+                break
+        if not reply:
+            reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
-    st.session_state.messages.append({"role":"bot","text":reply})
+    st.session_state.messages.append({"role": "bot", "text": reply})
     if st.session_state.tts_enabled:
         st.session_state.pending_audio = make_tts(reply, lang_code)
+    st.experimental_rerun()
 
-# ---- Play TTS ----
+# ---- Audio Playback ----
 if st.session_state.pending_audio:
+    st.markdown("""
+        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
+    """, unsafe_allow_html=True)
     st.markdown(f"""
-        <audio autoplay>
+        <audio id="bot-audio" autoplay>
             <source src="{st.session_state.pending_audio}" type="audio/mp3">
         </audio>
     """, unsafe_allow_html=True)
     st.session_state.pending_audio = None
+
 
 
