@@ -1,7 +1,6 @@
 import streamlit as st
 from google.cloud import texttospeech
 import base64
-from io import BytesIO
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
@@ -64,7 +63,7 @@ if "tts_enabled" not in st.session_state:
 if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 
-# ---- Language Switcher ----
+# ---- Language Switcher (manual) ----
 col1, col2 = st.columns([4, 1])
 with col2:
     if st.button("Қаз / Рус"):
@@ -76,7 +75,7 @@ with col2:
         })
         st.rerun()
 
-# ---- Responses ----
+# ---- Response Data ----
 responses_ru = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
@@ -101,7 +100,14 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- ✅ Google Cloud TTS Function (RU + KZ) ----
+# ---- Helper: Detect Language ----
+def detect_lang(text: str) -> str:
+    kk_letters = "қәіңғүұөһ"
+    if any(ch in text.lower() for ch in kk_letters):
+        return "kk"
+    return "ru"
+
+# ---- Google Cloud TTS ----
 def make_tts(text: str, lang_code: str):
     client = texttospeech.TextToSpeechClient()
 
@@ -125,7 +131,7 @@ def make_tts(text: str, lang_code: str):
             input=synthesis_input, voice=voice_params, audio_config=audio_config
         )
     except Exception:
-        # fallback на русский голос, если казахский не поддерживается
+        # fallback — если казахский не поддерживается
         fallback_voice = texttospeech.VoiceSelectionParams(
             language_code="ru-RU",
             name="ru-RU-Standard-D",
@@ -156,11 +162,14 @@ send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отпр�
 # ---- Logic ----
 if send and user_input:
     msg = user_input.strip()
+    detected_lang = detect_lang(msg)
+    st.session_state.lang = detected_lang  # автоопределение языка
+
     st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
-    if st.session_state.lang == "ru":
+    if detected_lang == "ru":
         responses = responses_ru
         cabinet_map = cabinet_map_ru
         lang_code = "ru"
@@ -169,12 +178,13 @@ if send and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
+    # Обработка команд
     if ("выключи голос" in message) or ("дыбысты сөндір" in message):
         st.session_state.tts_enabled = False
-        reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
+        reply = "Голос отключен." if lang_code == "ru" else "Дыбыс сөндірілді."
     elif ("включи голос" in message) or ("дыбысты қос" in message):
         st.session_state.tts_enabled = True
-        reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
+        reply = "Голос включен." if lang_code == "ru" else "Дыбыс қосылды."
     elif any(k in message for k in cabinet_map.keys()):
         for k, v in cabinet_map.items():
             if k in message:
@@ -189,7 +199,7 @@ if send and user_input:
     if not reply:
         reply = (
             "Простите, я не понял команду. Напишите 'помощь'."
-            if st.session_state.lang == "ru"
+            if lang_code == "ru"
             else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
         )
 
