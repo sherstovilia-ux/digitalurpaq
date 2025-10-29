@@ -35,7 +35,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Session State ----
+# ---- Session State Defaults ----
 if "lang" not in st.session_state:
     st.session_state.lang = "ru"
 if "messages" not in st.session_state:
@@ -58,7 +58,7 @@ with col2:
             "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
             else "Язык переключён на русский."
         })
-        st.session_state.rerun_needed = True
+        st.session_state.rerun_needed = True  # флаг для безопасного rerun
 
 # ---- Responses ----
 responses_ru = {
@@ -122,10 +122,10 @@ with chat_placeholder.container():
 # ---- Input Form ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
 with st.form(key="chat_form"):
-    user_input = st.text_input(" ", placeholder=placeholder)
+    user_input = st.text_input(" ", placeholder=placeholder, key="user_input")
     submit_button = st.form_submit_button("Отправить")
 
-# ---- Logic ----
+# ---- Chat Logic ----
 if submit_button and user_input:
     msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": msg})
@@ -141,8 +141,8 @@ if submit_button and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    # Проверка кабинета
-    if "кабинет" in message or "кабинеті" in message:
+    # Кабинеты
+    if "кабинет" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -163,15 +163,17 @@ if submit_button and user_input:
 
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # TTS
+    # ---- Авто-TTS ----
     if st.session_state.tts_enabled:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
-    # Безопасный rerun для обновления UI
+    # Очистить поле ввода
+    st.session_state.user_input = ""
     st.session_state.rerun_needed = True
 
-# ---- Обновление при смене языка или отправке ----
+# ---- Безопасный rerun ----
 if st.session_state.rerun_needed:
     st.session_state.rerun_needed = False
     st.experimental_rerun()
+
