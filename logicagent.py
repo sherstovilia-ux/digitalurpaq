@@ -1,6 +1,6 @@
 import streamlit as st
-from google.cloud import texttospeech
-import base64
+import pyttsx3
+from io import BytesIO
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
@@ -54,14 +54,9 @@ st.markdown("""
 if "lang" not in st.session_state:
     st.session_state.lang = "ru"
 if "messages" not in st.session_state:
-    st.session_state.messages = [{
-        "role": "bot",
-        "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."
-    }]
+    st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "pending_audio" not in st.session_state:
-    st.session_state.pending_audio = None
 
 # ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
@@ -70,21 +65,20 @@ with col2:
         st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
         st.session_state.messages.append({
             "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
-            else "Язык переключён на русский."
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
         })
         st.rerun()
 
 # ---- Responses ----
 responses_ru = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
     "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
 responses_kk = {
     "байланыс": "Мекенжай: Жамбыл Жабаев көш., 55А, Петропавл. Телефон: 8 7152 34-02-40. Толығырақ: https://digitalurpaq.edu.kz/kk/kkbajlanysrukontakty.html",
-    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанындағы оқу блокында.",
+    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанындағы оқу блогында.",
     "көмек": "Қолжетімді командалар: кабинет <атауы>, байланыс, акт залы, жазылу, көмек.",
     "жазылу": "Онлайн нысан: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -100,33 +94,30 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- TTS Function ----
-def make_tts(text: str, lang_code: str):
-    client = texttospeech.TextToSpeechClient()
+# ---- TTS Function (pyttsx3) ----
+engine = pyttsx3.init()
+voices = engine.getProperty('voices')
 
-    if lang_code == "kk":
-        language = "kk-KZ"
-        voice_name = "kk-KZ-Standard-B"
-    else:
-        language = "ru-RU"
-        voice_name = "ru-RU-Standard-D"
-
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=language,
-        name=voice_name,
-        ssml_gender=texttospeech.SsmlVoiceGender.MALE
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
-    )
-
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-
-    b64 = base64.b64encode(response.audio_content).decode()
-    return f"data:audio/mp3;base64,{b64}"
+def make_tts(text: str, lang: str):
+    # Выбираем голос
+    if lang == "ru":
+        for v in voices:
+            if "russian" in v.name.lower():
+                engine.setProperty('voice', v.id)
+                break
+    elif lang == "kk":
+        for v in voices:
+            if "kazakh" in v.name.lower() or "russian" in v.name.lower():
+                engine.setProperty('voice', v.id)
+                break
+    # Настройки скорости
+    engine.setProperty('rate', 150)
+    # Сохраняем в BytesIO
+    audio_bytes = BytesIO()
+    engine.save_to_file(text, "temp_audio.mp3")
+    engine.runAndWait()
+    audio_bytes.seek(0)
+    return "temp_audio.mp3"
 
 # ---- Chat Display ----
 st.title("🤖 Digital Urpaq Support Bot")
@@ -158,13 +149,7 @@ if send and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    if ("выключи голос" in message) or ("дыбысты сөндір" in message):
-        st.session_state.tts_enabled = False
-        reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
-    elif ("включи голос" in message) or ("дыбысты қос" in message):
-        st.session_state.tts_enabled = True
-        reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
-    elif any(k in message for k in cabinet_map.keys()):
+    if any(k in message for k in cabinet_map.keys()):
         for k, v in cabinet_map.items():
             if k in message:
                 reply = v
@@ -175,27 +160,12 @@ if send and user_input:
                 reply = v
                 break
     if not reply:
-        reply = "Простите, я не понял команду. Напишите 'помощь'." if st.session_state.lang == "ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
+        reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
-    st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
-    st.rerun()
 
-# ---- Audio Playback ----
-if st.session_state.pending_audio:
-    st.markdown("""
-        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
-    """, unsafe_allow_html=True)
-    st.markdown(f"""
-        <audio id="bot_audio" autoplay>
-            <source src="{st.session_state.pending_audio}" type="audio/mp3">
-        </audio>
-        <script>
-            const audio = document.getElementById('bot_audio');
-            audio.onended = () => {{
-                const mic = document.getElementById('mic-indicator');
-                if (mic) mic.style.display = 'none';
-            }};
-        </script>
-    """, unsafe_allow_html=True)
-    st.session_state.pending_audio = None
+    # ---- TTS ----
+    if st.session_state.tts_enabled:
+        audio_file = make_tts(reply, lang_code)
+        st.audio(audio_file, format="audio/mp3")
+        st.rerun()
