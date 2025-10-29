@@ -82,10 +82,14 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- Google Cloud TTS ----
+# ---- TTS Setup ----
 def make_tts_bytes(text: str, lang_code: str):
     try:
         client = texttospeech.TextToSpeechClient()
+    except Exception as e:
+        st.error(f"TTS клиент не создан: {e}")
+        return None
+    try:
         language = "kk-KZ" if lang_code=="kk" else "ru-RU"
         voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
         synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -100,7 +104,7 @@ def make_tts_bytes(text: str, lang_code: str):
         )
         return io.BytesIO(response.audio_content)
     except Exception as e:
-        st.error(f"Ошибка TTS: {e}")
+        st.error(f"TTS ошибка при синтезе речи: {e}")
         return None
 
 # ---- Chat UI ----
@@ -135,7 +139,7 @@ if submit_button and user_input:
         lang_code = "kk"
 
     # Кабинеты
-    if "кабинет" in message or "кабинеті" in message:
+    if "кабинет" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -161,7 +165,4 @@ if submit_button and user_input:
         audio_bytes = make_tts_bytes(reply, lang_code)
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3", start_time=0)
-
-# ---- TTS Toggle ----
-st.checkbox("Включить TTS / TTS қосу", value=st.session_state.tts_enabled, key="tts_enabled")
 
