@@ -45,18 +45,8 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-
-# ---- Language Switcher ----
-col1, col2 = st.columns([4, 1])
-with col2:
-    if st.button("Қаз / Рус"):
-        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
-        st.session_state.messages.append({
-            "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
-            else "Язык переключён на русский."
-        })
-        st.experimental_rerun()
+if "lang_changed" not in st.session_state:
+    st.session_state.lang_changed = False
 
 # ---- Responses ----
 responses_ru = {
@@ -100,6 +90,23 @@ def make_tts_bytes(text: str, lang_code: str):
     )
     return io.BytesIO(response.audio_content)
 
+# ---- Language Switcher ----
+with st.form(key="lang_form"):
+    lang_btn = st.form_submit_button("Қаз / Рус")
+    if lang_btn:
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        st.session_state.messages.append({
+            "role": "bot",
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
+        })
+        st.session_state.lang_changed = True
+
+# ---- Safe rerun if language changed ----
+if st.session_state.lang_changed:
+    st.session_state.lang_changed = False
+    st.experimental_rerun()
+
 # ---- Chat UI с автопрокруткой ----
 st.title("🤖 Digital Urpaq Support Bot")
 chat_placeholder = st.empty()
@@ -140,7 +147,7 @@ if submit_button and user_input:
         lang_code = "kk"
 
     # Кабинеты
-    if "кабинет" in message:
+    if "кабинет" in message or "кабинет" in message.lower() or "атауы" in message.lower():
         found = False
         for k, v in cabinet_map.items():
             if k in message:
