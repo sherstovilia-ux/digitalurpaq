@@ -1,11 +1,6 @@
-# Streamlit для веб-интерфейса
 streamlit==1.39.0
-
-# Google Cloud Text-to-Speech
-google-cloud-texttospeech==3.3.0
-
-# Определение языка (если нужно)
-langdetect==1.0.9
-
-# Совместимая версия rich для Streamlit 1.39.0
+google-cloud-texttospeech==2.17.0
+markdown-it-py==4.0.0
+mdurl==0.1.2
+pygments==2.19.2
 rich==13.4.2
