@@ -39,9 +39,7 @@ header, footer, #MainMenu {visibility: hidden;}
     50% {transform: scale(1.3); opacity: 0.5;}
     100% {transform: scale(1); opacity: 1;}
 }
-.repeat-btn {
-    margin-top: 5px;
-}
+.repeat-btn {margin-top: 5px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -53,12 +51,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---- Session State ----
+if "lang" not in st.session_state:
+    st.session_state.lang = "ru"
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
 if "last_audio" not in st.session_state:
     st.session_state.last_audio = None
+
+# ---- Language switcher ----
+col1, col2 = st.columns([4,1])
+with col2:
+    if st.button("Қаз / Рус"):
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        msg = "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
+        st.session_state.messages.append({"role":"bot","text":msg})
+        st.experimental_rerun()
 
 # ---- TTS Function ----
 def make_tts(text: str, lang_code: str):
@@ -81,38 +90,47 @@ def make_tts(text: str, lang_code: str):
     return BytesIO(response.audio_content)
 
 # ---- Chat UI ----
-st.title("🤖 Digital Urpaq Support Bot")
+title = "🤖 Digital Urpaq Support Bot"
+st.title(title)
+
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
-        bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
+        bubble = "user-bubble" if msg["role"]=="user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
+# ---- Texts by language ----
+placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang=="kk" else "Ваш вопрос:"
+send_text = "Жіберу" if st.session_state.lang=="kk" else "Отправить"
+cabinet_prompt = "Өтінемін, қай кабинет екенін нақтылаңыз." if st.session_state.lang=="kk" else "Уточните, пожалуйста, какой кабинет?"
+unknown_prompt = "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз." if st.session_state.lang=="kk" else "Простите, я не понял команду."
+
 # ---- User Input ----
-user_input = st.text_input("Ваш вопрос:")
-send = st.button("Отправить")
+user_input = st.text_input(placeholder, placeholder=placeholder)
+send = st.button(send_text)
 
 if send and user_input:
-    st.session_state.messages.append({"role": "user", "text": user_input})
-    
+    st.session_state.messages.append({"role":"user","text":user_input})
     msg_lower = user_input.lower()
-    if "кабинет" in msg_lower:
-        reply = "Уточните, пожалуйста, какой кабинет?"
-    else:
-        reply = "Простите, я не понял команду."
 
-    st.session_state.messages.append({"role": "bot", "text": reply})
+    if "кабинет" in msg_lower or "кабинет" in msg_lower:
+        reply = cabinet_prompt
+    else:
+        reply = unknown_prompt
+
+    st.session_state.messages.append({"role":"bot","text":reply})
 
     # ---- TTS ----
     if st.session_state.tts_enabled:
-        audio_bytes = make_tts(reply, "ru")
+        audio_bytes = make_tts(reply, st.session_state.lang)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
         st.session_state.last_audio = audio_bytes
 
 # ---- Repeat Button ----
 if st.session_state.last_audio:
-    if st.button("🔊 Повторить голос"):
+    repeat_label = "🔊 Дыбысты қайталау" if st.session_state.lang=="kk" else "🔊 Повторить голос"
+    if st.button(repeat_label):
         st.markdown("""
         <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
         """, unsafe_allow_html=True)
@@ -123,4 +141,5 @@ if st.session_state.last_audio:
             setTimeout(() => { if (mic) mic.style.display = 'none'; }, 3000);
         </script>
         """, unsafe_allow_html=True)
+
 
