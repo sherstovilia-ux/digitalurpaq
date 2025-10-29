@@ -39,6 +39,9 @@ header, footer, #MainMenu {visibility: hidden;}
     50% {transform: scale(1.3); opacity: 0.5;}
     100% {transform: scale(1); opacity: 1;}
 }
+.repeat-btn {
+    margin-top: 5px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,7 +101,7 @@ if send and user_input:
         reply = "Уточните, пожалуйста, какой кабинет?"
     else:
         reply = "Простите, я не понял команду."
-    
+
     st.session_state.messages.append({"role": "bot", "text": reply})
 
     # ---- TTS ----
@@ -106,3 +109,18 @@ if send and user_input:
         audio_bytes = make_tts(reply, "ru")
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
         st.session_state.last_audio = audio_bytes
+
+# ---- Repeat Button ----
+if st.session_state.last_audio:
+    if st.button("🔊 Повторить голос"):
+        st.markdown("""
+        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
+        """, unsafe_allow_html=True)
+        st.audio(st.session_state.last_audio, format="audio/mp3", start_time=0)
+        st.markdown("""
+        <script>
+            const mic = document.getElementById('mic-indicator');
+            setTimeout(() => { if (mic) mic.style.display = 'none'; }, 3000);
+        </script>
+        """, unsafe_allow_html=True)
+
