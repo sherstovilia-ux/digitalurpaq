@@ -1,6 +1,7 @@
 import streamlit as st
-from google.cloud import texttospeech
+from TTS.api import TTS
 import io
+import soundfile as sf
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
@@ -46,6 +47,17 @@ if "messages" not in st.session_state:
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
 
+# ---- Language Switcher ----
+col1, col2 = st.columns([4, 1])
+with col2:
+    if st.button("Қаз / Рус"):
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        st.session_state.messages.append({
+            "role": "bot",
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
+        })
+
 # ---- Responses ----
 responses_ru = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
@@ -71,25 +83,18 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- Google Cloud TTS ----
-def make_tts_bytes(text: str, lang_code: str):
+# ---- Coqui TTS ----
+def make_tts_bytes_coqui(text: str, lang_code: str):
     try:
-        client = texttospeech.TextToSpeechClient()
-        language = "kk-KZ" if lang_code=="kk" else "ru-RU"
-        voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
-        synthesis_input = texttospeech.SynthesisInput(text=text)
-        voice_params = texttospeech.VoiceSelectionParams(
-            language_code=language,
-            name=voice_name,
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-        )
-        audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-        response = client.synthesize_speech(
-            input=synthesis_input, voice=voice_params, audio_config=audio_config
-        )
-        return io.BytesIO(response.audio_content)
+        model_name = "tts_models/multilingual/multi-dataset/xtts_v2"
+        tts = TTS(model_name)
+        wav = tts.tts(text=text, language=lang_code)  # lang_code: "ru" или "kk"
+        buffer = io.BytesIO()
+        sf.write(buffer, wav, samplerate=tts.synthesizer.output_sample_rate, format="WAV")
+        buffer.seek(0)
+        return buffer
     except Exception as e:
-        st.error(f"Ошибка TTS: {e}")
+        st.error(f"TTS ошибка: {e}")
         return None
 
 # ---- Chat UI ----
@@ -100,19 +105,6 @@ with st.container():
         bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-
-# ---- Language Switcher ----
-col1, col2 = st.columns([4, 1])
-with col2:
-    if st.button("Қаз / Рус"):
-        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
-        lang_msg = "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
-        st.session_state.messages.append({"role": "bot", "text": lang_msg})
-        if st.session_state.tts_enabled:
-            lang_code = "kk" if st.session_state.lang == "kk" else "ru"
-            audio_bytes = make_tts_bytes(lang_msg, lang_code)
-            if audio_bytes:
-                st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
 # ---- Input Form ----
 with st.form(key="user_input_form"):
@@ -160,7 +152,6 @@ if submit_button and user_input:
 
     # ---- TTS ----
     if st.session_state.tts_enabled and reply:
-        audio_bytes = make_tts_bytes(reply, lang_code)
+        audio_bytes = make_tts_bytes_coqui(reply, lang_code)
         if audio_bytes:
-            st.audio(audio_bytes, format="audio/mp3", start_time=0)
-
+            st.audio(audio_bytes, format="audio/wav", start_time=0)
