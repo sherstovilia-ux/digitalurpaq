@@ -9,11 +9,22 @@ st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
 st.markdown("""
 <style>
 header, footer, #MainMenu {visibility: hidden;}
-.banner img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; }
-.chat-bubble { border-radius: 20px; padding: 10px 15px; margin: 8px 0; max-width: 80%; word-wrap: break-word; }
+.banner img {
+    width: 100%;
+    max-height: 250px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+.chat-bubble {
+    border-radius: 20px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    max-width: 80%;
+    word-wrap: break-word;
+}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
-.chat-container {display: flex; flex-direction: column; max-height: 500px; overflow-y: auto;}
+.chat-container {display: flex; flex-direction: column;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -34,8 +45,6 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "rerun_needed" not in st.session_state:
-    st.session_state.rerun_needed = False
 
 # ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
@@ -44,10 +53,9 @@ with col2:
         st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
         st.session_state.messages.append({
             "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk"
-                    else "Язык переключён на русский."
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
         })
-        st.session_state.rerun_needed = True  # безопасный rerun через флаг
 
 # ---- Responses ----
 responses_ru = {
@@ -76,51 +84,48 @@ cabinet_map_kk = {
 
 # ---- Google Cloud TTS ----
 def make_tts_bytes(text: str, lang_code: str):
-    client = texttospeech.TextToSpeechClient()
-    language = "kk-KZ" if lang_code=="kk" else "ru-RU"
-    voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice_params = texttospeech.VoiceSelectionParams(
-        language_code=language,
-        name=voice_name,
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-    )
-    audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice_params, audio_config=audio_config
-    )
-    return io.BytesIO(response.audio_content)
+    try:
+        client = texttospeech.TextToSpeechClient()
+        language = "kk-KZ" if lang_code=="kk" else "ru-RU"
+        voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        voice_params = texttospeech.VoiceSelectionParams(
+            language_code=language,
+            name=voice_name,
+            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        )
+        audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
+        response = client.synthesize_speech(
+            input=synthesis_input, voice=voice_params, audio_config=audio_config
+        )
+        return io.BytesIO(response.audio_content)
+    except Exception as e:
+        st.error(f"Ошибка TTS: {e}")
+        return None
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
-chat_placeholder = st.empty()
-with chat_placeholder.container():
-    st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
+with st.container():
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
-        bubble = "user-bubble" if msg["role"]=="user" else "bot-bubble"
+        bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("""
-        <script>
-            var chatDiv = document.getElementById("chat-container");
-            if (chatDiv) { chatDiv.scrollTop = chatDiv.scrollHeight; }
-        </script>
-    """, unsafe_allow_html=True)
 
 # ---- Input Form ----
-placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang=="kk" else "Ваш вопрос:"
-with st.form(key="chat_form"):
-    user_input = st.text_input(" ", placeholder=placeholder, key="user_input")
+with st.form(key="user_input_form"):
+    placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
+    user_input = st.text_input(placeholder, placeholder=placeholder)
     submit_button = st.form_submit_button("Отправить")
 
 # ---- Logic ----
 if submit_button and user_input:
     msg = user_input.strip()
-    st.session_state.messages.append({"role":"user","text":msg})
+    st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
-    if st.session_state.lang=="ru":
+    if st.session_state.lang == "ru":
         responses = responses_ru
         cabinet_map = cabinet_map_ru
         lang_code = "ru"
@@ -129,8 +134,8 @@ if submit_button and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    # Проверка кабинета
-    if "кабинет" in message or "кабинет" in message.lower():
+    # Кабинеты
+    if "кабинет" in message or "кабинеті" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -149,16 +154,14 @@ if submit_button and user_input:
         if not found:
             reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
-    st.session_state.messages.append({"role":"bot","text":reply})
+    st.session_state.messages.append({"role": "bot", "text": reply})
 
-    if st.session_state.tts_enabled:
+    # ---- TTS ----
+    if st.session_state.tts_enabled and reply:
         audio_bytes = make_tts_bytes(reply, lang_code)
-        st.audio(audio_bytes, format="audio/mp3", start_time=0)
+        if audio_bytes:
+            st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
-    # Очищаем поле ввода
-    st.session_state.user_input = ""
+# ---- TTS Toggle ----
+st.checkbox("Включить TTS / TTS қосу", value=st.session_state.tts_enabled, key="tts_enabled")
 
-# ---- Безопасный rerun ----
-if st.session_state.rerun_needed:
-    st.session_state.rerun_needed = False
-    st.experimental_rerun()
