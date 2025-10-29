@@ -1,43 +1,35 @@
 import streamlit as st
 import edge_tts
 import asyncio
-import os
+from pathlib import Path
 
-st.set_page_config(page_title="Text-to-Speech App", page_icon="🗣️")
+st.set_page_config(page_title="Text-to-Speech Demo", page_icon="🔊")
 
-st.title("Text-to-Speech с edge-tts 🗣️")
-st.write("Введите текст, выберите голос и нажмите кнопку, чтобы услышать озвучку.")
+st.title("🔊 Text-to-Speech Demo with edge-tts")
 
-# Список доступных голосов (можно расширять)
-voices = [
+# Ввод текста пользователем
+text_input = st.text_area("Введите текст для озвучивания:")
+
+voice_options = [
     "en-US-AriaNeural",
     "en-US-GuyNeural",
     "en-GB-LibbyNeural",
-    "en-GB-RyanNeural",
-    "ru-RU-DariyaNeural",
-    "ru-RU-IlyaNeural"
+    "ru-RU-DariyaNeural"
 ]
 
-text = st.text_area("Введите текст для озвучивания:")
-voice = st.selectbox("Выберите голос:", voices)
-output_file = "speech.mp3"
+voice_choice = st.selectbox("Выберите голос:", voice_options)
 
-# Функция для TTS
-def speak(text: str, voice: str = "en-US-AriaNeural", output_file: str = "speech.mp3"):
-    async def tts():
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(output_file)
-    asyncio.run(tts())
-    return output_file
+output_file = Path("output.mp3")
 
-if st.button("Произнести"):
-    if not text.strip():
-        st.warning("Введите текст!")
+async def tts(text, voice, filename):
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(filename)
+
+if st.button("Сгенерировать речь"):
+    if not text_input.strip():
+        st.warning("Введите текст для озвучивания!")
     else:
-        with st.spinner("Генерация речи..."):
-            speak(text, voice, output_file)
-        st.success("Готово! Слушайте ниже:")
-        st.audio(output_file, format="audio/mp3")
-
-
-
+        st.info("Генерируем речь...")
+        asyncio.run(tts(text_input, voice_choice, output_file))
+        st.success("Готово! 🎉")
+        st.audio(str(output_file), format="audio/mp3")
