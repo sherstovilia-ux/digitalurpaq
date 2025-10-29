@@ -46,17 +46,6 @@ if "messages" not in st.session_state:
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
 
-# ---- Language Switcher ----
-col1, col2 = st.columns([4, 1])
-with col2:
-    if st.button("Қаз / Рус"):
-        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
-        st.session_state.messages.append({
-            "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
-            else "Язык переключён на русский."
-        })
-
 # ---- Responses ----
 responses_ru = {
     "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
@@ -82,14 +71,10 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- TTS Setup ----
+# ---- Google Cloud TTS ----
 def make_tts_bytes(text: str, lang_code: str):
     try:
         client = texttospeech.TextToSpeechClient()
-    except Exception as e:
-        st.error(f"TTS клиент не создан: {e}")
-        return None
-    try:
         language = "kk-KZ" if lang_code=="kk" else "ru-RU"
         voice_name = "kk-KZ-Standard-A" if lang_code=="kk" else "ru-RU-Standard-D"
         synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -104,7 +89,7 @@ def make_tts_bytes(text: str, lang_code: str):
         )
         return io.BytesIO(response.audio_content)
     except Exception as e:
-        st.error(f"TTS ошибка при синтезе речи: {e}")
+        st.error(f"Ошибка TTS: {e}")
         return None
 
 # ---- Chat UI ----
@@ -115,6 +100,19 @@ with st.container():
         bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
+
+# ---- Language Switcher ----
+col1, col2 = st.columns([4, 1])
+with col2:
+    if st.button("Қаз / Рус"):
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        lang_msg = "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
+        st.session_state.messages.append({"role": "bot", "text": lang_msg})
+        if st.session_state.tts_enabled:
+            lang_code = "kk" if st.session_state.lang == "kk" else "ru"
+            audio_bytes = make_tts_bytes(lang_msg, lang_code)
+            if audio_bytes:
+                st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
 # ---- Input Form ----
 with st.form(key="user_input_form"):
@@ -139,7 +137,7 @@ if submit_button and user_input:
         lang_code = "kk"
 
     # Кабинеты
-    if "кабинет" in message:
+    if "кабинет" in message or "кабинет" in message.lower():
         found = False
         for k, v in cabinet_map.items():
             if k in message:
