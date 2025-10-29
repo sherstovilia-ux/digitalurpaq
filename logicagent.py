@@ -1,35 +1,43 @@
 import streamlit as st
-import pyttsx3
-import tempfile
+import edge_tts
+import asyncio
 import os
 
-# Инициализация движка pyttsx3
-engine = pyttsx3.init()
+st.set_page_config(page_title="Text-to-Speech App", page_icon="🗣️")
 
-st.title("Тест синтеза речи с pyttsx3")
+st.title("Text-to-Speech с edge-tts 🗣️")
+st.write("Введите текст, выберите голос и нажмите кнопку, чтобы услышать озвучку.")
 
-# Ввод текста пользователем
-text = st.text_area("Введите текст для синтеза речи:")
+# Список доступных голосов (можно расширять)
+voices = [
+    "en-US-AriaNeural",
+    "en-US-GuyNeural",
+    "en-GB-LibbyNeural",
+    "en-GB-RyanNeural",
+    "ru-RU-DariyaNeural",
+    "ru-RU-IlyaNeural"
+]
 
-# Кнопка для генерации речи
-if st.button("Синтезировать"):
-    if text.strip() == "":
-        st.warning("Введите текст для озвучивания!")
+text = st.text_area("Введите текст для озвучивания:")
+voice = st.selectbox("Выберите голос:", voices)
+output_file = "speech.mp3"
+
+# Функция для TTS
+def speak(text: str, voice: str = "en-US-AriaNeural", output_file: str = "speech.mp3"):
+    async def tts():
+        communicate = edge_tts.Communicate(text, voice)
+        await communicate.save(output_file)
+    asyncio.run(tts())
+    return output_file
+
+if st.button("Произнести"):
+    if not text.strip():
+        st.warning("Введите текст!")
     else:
-        # Создаем временный файл
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tmp_file_name = tmp_file.name
-        tmp_file.close()
+        with st.spinner("Генерация речи..."):
+            speak(text, voice, output_file)
+        st.success("Готово! Слушайте ниже:")
+        st.audio(output_file, format="audio/mp3")
 
-        # Сохраняем речь в файл
-        engine.save_to_file(text, tmp_file_name)
-        engine.runAndWait()
 
-        # Проигрываем в Streamlit
-        audio_file = open(tmp_file_name, "rb")
-        audio_bytes = audio_file.read()
-        st.audio(audio_bytes, format="audio/mp3")
-
-        # Удаляем временный файл
-        os.remove(tmp_file_name)
 
