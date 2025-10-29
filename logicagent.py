@@ -52,24 +52,24 @@ if "rerun_needed" not in st.session_state:
 col1, col2 = st.columns([4, 1])
 with col2:
     if st.button("Қаз / Рус"):
-        st.session_state.lang = "kk" if st.session_state.lang=="ru" else "ru"
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
         st.session_state.messages.append({
             "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk"
-                    else "Язык переключён на русский."
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
         })
         st.session_state.rerun_needed = True
 
 # ---- Responses ----
 responses_ru = {
-    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
-    "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — рядом с IT-кабинетами.",
+    "контакты": "Адрес: ул. Жамбыла Жабаева 55А, Петропавловск. Телефон: 8 7152 34-02-40. Также смотрите сайт: https://digitalurpaq.edu.kz/ru/kkbajlanysrukontakty.html",
+    "актовый зал": "В здании три актовых зала: первый — над лобби, второй — в левом крыле, третий — в учебном блоке рядом с IT-кабинетами.",
     "помощь": "Доступные команды: кабинет <название>, контакты, актовый зал, запись, помощь.",
     "запись": "Онлайн-форма: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
 responses_kk = {
     "байланыс": "Мекенжай: Жамбыл Жабаев көш., 55А, Петропавл. Телефон: 8 7152 34-02-40. Толығырақ: https://digitalurpaq.edu.kz/kk/kkbajlanysrukontakty.html",
-    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанында.",
+    "акт залы": "Ғимаратта үш акт залы бар: біріншісі — вестибюль үстінде, екіншісі — сол қанатта, үшіншісі — IT кабинеттерінің жанындағы оқу блогында.",
     "көмек": "Қолжетімді командалар: кабинет <атауы>, байланыс, акт залы, жазылу, көмек.",
     "жазылу": "Онлайн нысан: https://docs.google.com/forms/d/e/1FAIpQLSc5a5G0CY5XuOCpVHcg7qTDBdEGGkyVEjuBwihpfHncDCqv2A/viewform",
 }
@@ -97,16 +97,19 @@ def make_tts_bytes(text: str, lang_code: str):
         ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
     )
     audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-    response = client.synthesize_speech(input=synthesis_input, voice=voice_params, audio_config=audio_config)
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice_params, audio_config=audio_config
+    )
     return io.BytesIO(response.audio_content)
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
 chat_placeholder = st.empty()
+
 with chat_placeholder.container():
     st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
-        bubble = "user-bubble" if msg["role"]=="user" else "bot-bubble"
+        bubble = "user-bubble" if msg["role"] == "user" else "bot-bubble"
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("""
@@ -117,19 +120,19 @@ with chat_placeholder.container():
     """, unsafe_allow_html=True)
 
 # ---- Input Form ----
-placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang=="kk" else "Ваш вопрос:"
+placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
 with st.form(key="chat_form"):
-    user_input = st.text_input(" ", placeholder=placeholder, key="user_input")
+    user_input = st.text_input(" ", placeholder=placeholder)
     submit_button = st.form_submit_button("Отправить")
 
 # ---- Logic ----
 if submit_button and user_input:
     msg = user_input.strip()
-    st.session_state.messages.append({"role":"user","text":msg})
+    st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
-    if st.session_state.lang=="ru":
+    if st.session_state.lang == "ru":
         responses = responses_ru
         cabinet_map = cabinet_map_ru
         lang_code = "ru"
@@ -138,8 +141,8 @@ if submit_button and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    # Кабинеты
-    if "кабинет" in message:
+    # Проверка кабинета
+    if "кабинет" in message or "кабинеті" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -158,18 +161,17 @@ if submit_button and user_input:
         if not found:
             reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
-    st.session_state.messages.append({"role":"bot","text":reply})
+    st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- Авто-TTS ----
+    # TTS
     if st.session_state.tts_enabled:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
-    # Отметим, что нужен rerun
+    # Безопасный rerun для обновления UI
     st.session_state.rerun_needed = True
 
-# ---- Безопасный rerun в конце скрипта ----
+# ---- Обновление при смене языка или отправке ----
 if st.session_state.rerun_needed:
-    st.session_state.user_input = ""
     st.session_state.rerun_needed = False
     st.experimental_rerun()
