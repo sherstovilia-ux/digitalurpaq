@@ -1,7 +1,6 @@
 import streamlit as st
 from google.cloud import texttospeech
 import base64
-from io import BytesIO
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
@@ -164,28 +163,37 @@ if send and user_input:
         responses = responses_ru
         cabinet_map = cabinet_map_ru
         lang_code = "ru"
+        ask_cabinet = "Пожалуйста, уточните, какой кабинет вас интересует."
     else:
         responses = responses_kk
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
+        ask_cabinet = "Қай кабинетті білгіңіз келетіні туралы нақтылаңыз."
 
+    # ---- Проверка на команду "выключи/включи голос" ----
     if ("выключи голос" in message) or ("дыбысты сөндір" in message):
         st.session_state.tts_enabled = False
         reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
     elif ("включи голос" in message) or ("дыбысты қос" in message):
         st.session_state.tts_enabled = True
         reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
+    # ---- Если просто "кабинет" ----
+    elif message.strip() in ["кабинет", "кабинет?"]:
+        reply = ask_cabinet
+    # ---- Поиск конкретного кабинета ----
     elif any(k in message for k in cabinet_map.keys()):
         for k, v in cabinet_map.items():
             if k in message:
                 reply = v
                 break
     else:
+        # Проверка остальных команд
         for k, v in responses.items():
             if k in message:
                 reply = v
                 break
 
+    # ---- Если ничего не найдено ----
     if not reply:
         reply = (
             "Простите, я не понял команду. Напишите 'помощь'."
@@ -193,28 +201,15 @@ if send and user_input:
             else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
         )
 
+    # ---- Добавляем сообщение бота и TTS ----
     st.session_state.messages.append({"role": "bot", "text": reply})
     st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
     st.rerun()
 
-# ---- Audio Playback ----
+# ---- Audio playback ----
 if st.session_state.pending_audio:
-    st.markdown("""
-        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
-    """, unsafe_allow_html=True)
-    st.markdown(f"""
-        <audio id="bot_audio" autoplay>
-            <source src="{st.session_state.pending_audio}" type="audio/mp3">
-        </audio>
-        <script>
-            const audio = document.getElementById('bot_audio');
-            audio.onended = () => {{
-                const mic = document.getElementById('mic-indicator');
-                if (mic) mic.style.display = 'none';
-            }};
-        </script>
-    """, unsafe_allow_html=True)
-
+    st.audio(st.session_state.pending_audio, format="audio/mp3")
     st.session_state.pending_audio = None
+
 
 
