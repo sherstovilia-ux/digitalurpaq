@@ -35,7 +35,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Session State ----
+# ---- Session State Defaults ----
 if "lang" not in st.session_state:
     st.session_state.lang = "ru"
 if "messages" not in st.session_state:
@@ -45,23 +45,20 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "lang_changed" not in st.session_state:
-    st.session_state.lang_changed = False
+if "rerun_needed" not in st.session_state:
+    st.session_state.rerun_needed = False
 
 # ---- Language Switcher ----
-def switch_language():
-    st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
-    st.session_state.messages.append({
-        "role": "bot",
-        "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk"
-                else "Язык переключён на русский."
-    })
-    st.session_state.lang_changed = True
-
 col1, col2 = st.columns([4, 1])
 with col2:
     if st.button("Қаз / Рус"):
-        switch_language()
+        st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
+        st.session_state.messages.append({
+            "role": "bot",
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang=="kk"
+                    else "Язык переключён на русский."
+        })
+        st.session_state.rerun_needed = True  # безопасный флаг rerun
 
 # ---- Responses ----
 responses_ru = {
@@ -105,9 +102,10 @@ def make_tts_bytes(text: str, lang_code: str):
     )
     return io.BytesIO(response.audio_content)
 
-# ---- Chat UI ----
+# ---- Chat UI с автопрокруткой ----
 st.title("🤖 Digital Urpaq Support Bot")
 chat_placeholder = st.empty()
+
 with chat_placeholder.container():
     st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
@@ -130,7 +128,7 @@ with st.form(key="chat_form"):
 # ---- Chat Logic ----
 if submit_button and user_input:
     msg = user_input.strip()
-    st.session_state.messages.append({"role":"user", "text": msg})
+    st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
     reply = None
 
@@ -144,9 +142,9 @@ if submit_button and user_input:
         lang_code = "kk"
 
     # Кабинеты
-    if "кабинет" in message or "кабинет" in message.lower():
+    if "кабинет" in message or "кабинет" in message:
         found = False
-        for k,v in cabinet_map.items():
+        for k, v in cabinet_map.items():
             if k in message:
                 reply = v
                 found = True
@@ -155,7 +153,7 @@ if submit_button and user_input:
             reply = "Уточните, пожалуйста, какой кабинет?" if lang_code=="ru" else "Қай кабинетті қажет ететінін нақтылаңыз?"
     else:
         found = False
-        for k,v in responses.items():
+        for k, v in responses.items():
             if k in message:
                 reply = v
                 found = True
@@ -163,16 +161,18 @@ if submit_button and user_input:
         if not found:
             reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
-    st.session_state.messages.append({"role":"bot","text": reply})
+    st.session_state.messages.append({"role":"bot","text":reply})
 
+    # ---- Авто-TTS ----
     if st.session_state.tts_enabled:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
+    # Очистить поле ввода
     st.session_state.user_input = ""
-    st.experimental_rerun()
+    st.session_state.rerun_needed = True
 
-# ---- Rerun после смены языка ----
-if st.session_state.lang_changed:
-    st.session_state.lang_changed = False
+# ---- Безопасный rerun ----
+if st.session_state.rerun_needed:
+    st.session_state.rerun_needed = False
     st.experimental_rerun()
