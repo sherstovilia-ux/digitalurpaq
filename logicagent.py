@@ -60,8 +60,6 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "pending_audio" not in st.session_state:
-    st.session_state.pending_audio = None
 
 # ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
@@ -100,7 +98,7 @@ cabinet_map_kk = {
     "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- ✅ Google Cloud TTS Function (RU + KZ) ----
+# ---- TTS Function ----
 def make_tts(text: str, lang_code: str):
     client = texttospeech.TextToSpeechClient()
 
@@ -119,21 +117,9 @@ def make_tts(text: str, lang_code: str):
     )
     audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
 
-    try:
-        response = client.synthesize_speech(
-            input=synthesis_input, voice=voice_params, audio_config=audio_config
-        )
-    except Exception:
-        # fallback на русский голос, если казахский не поддерживается
-        fallback_voice = texttospeech.VoiceSelectionParams(
-            language_code="ru-RU",
-            name="ru-RU-Standard-D",
-            ssml_gender=texttospeech.SsmlVoiceGender.MALE
-        )
-        response = client.synthesize_speech(
-            input=synthesis_input, voice=fallback_voice, audio_config=audio_config
-        )
-
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice_params, audio_config=audio_config
+    )
     b64 = base64.b64encode(response.audio_content).decode()
     return f"data:audio/mp3;base64,{b64}"
 
@@ -170,30 +156,26 @@ if send and user_input:
         lang_code = "kk"
         ask_cabinet = "Қай кабинетті білгіңіз келетіні туралы нақтылаңыз."
 
-    # ---- Проверка на команду "выключи/включи голос" ----
+    # Проверка команд
     if ("выключи голос" in message) or ("дыбысты сөндір" in message):
         st.session_state.tts_enabled = False
         reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
     elif ("включи голос" in message) or ("дыбысты қос" in message):
         st.session_state.tts_enabled = True
         reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
-    # ---- Если просто "кабинет" ----
     elif message.strip() in ["кабинет", "кабинет?"]:
         reply = ask_cabinet
-    # ---- Поиск конкретного кабинета ----
     elif any(k in message for k in cabinet_map.keys()):
         for k, v in cabinet_map.items():
             if k in message:
                 reply = v
                 break
     else:
-        # Проверка остальных команд
         for k, v in responses.items():
             if k in message:
                 reply = v
                 break
 
-    # ---- Если ничего не найдено ----
     if not reply:
         reply = (
             "Простите, я не понял команду. Напишите 'помощь'."
@@ -201,15 +183,11 @@ if send and user_input:
             else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
         )
 
-    # ---- Добавляем сообщение бота и TTS ----
+    # ---- Добавляем сообщение и TTS ----
     st.session_state.messages.append({"role": "bot", "text": reply})
-    st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
+    if st.session_state.tts_enabled:
+        audio_data = make_tts(reply, lang_code)
+        st.audio(audio_data, format="audio/mp3")
     st.rerun()
-
-# ---- Audio playback ----
-if st.session_state.pending_audio:
-    st.audio(st.session_state.pending_audio, format="audio/mp3")
-    st.session_state.pending_audio = None
-
 
 
