@@ -1,5 +1,5 @@
 import streamlit as st
-from gtts import gTTS
+from google.cloud import texttospeech
 import base64
 from io import BytesIO
 
@@ -51,24 +51,28 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Session state ----
+# ---- Session ----
 if "lang" not in st.session_state:
-    st.session_state.lang = "ru"  # по умолчанию русский
+    st.session_state.lang = "ru"
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "bot", "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."}]
+    st.session_state.messages = [{
+        "role": "bot",
+        "text": "Привет! Я помощник Digital Urpaq. Задайте вопрос о кабинетах, контактах или записи."
+    }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
 if "pending_audio" not in st.session_state:
     st.session_state.pending_audio = None
 
-# ---- Language switcher ----
+# ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
 with col2:
     if st.button("Қаз / Рус"):
         st.session_state.lang = "kk" if st.session_state.lang == "ru" else "ru"
         st.session_state.messages.append({
             "role": "bot",
-            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk" else "Язык переключён на русский."
+            "text": "Тіл қазақ тіліне ауыстырылды." if st.session_state.lang == "kk"
+            else "Язык переключён на русский."
         })
         st.rerun()
 
@@ -89,22 +93,43 @@ responses_kk = {
 cabinet_map_ru = {
     "лего": "Кабинет LEGO-конструирования — 1 этаж, правое крыло, третий справа от входа.",
     "физика": "Кабинет Физики — левое крыло, 3 этаж, рядом с Астрономией.",
+    "робототехника": "Кабинет Робототехники — 2 этаж, левое крыло, конец коридора."
 }
 cabinet_map_kk = {
     "лего": "LEGO-құрастыру кабинеті — 1 қабат, оң жақ қанат, кіреберістен үшінші есік.",
     "физика": "Физика кабинеті — сол жақ қанат, 3 қабат, Астрономия кабинетімен қатар.",
+    "робототехника": "Робототехника кабинеті — 2 қабат, сол жақ қанат, дәліздің соңында."
 }
 
-# ---- TTS function ----
+# ---- TTS Function (Google Cloud, male voices) ----
 def make_tts(text: str, lang_code: str):
-    tts = gTTS(text=text, lang=lang_code, tld='com', slow=False)
-    fp = BytesIO()
-    tts.write_to_fp(fp)
-    fp.seek(0)
-    b64 = base64.b64encode(fp.read()).decode()
+    client = texttospeech.TextToSpeechClient()
+
+    if lang_code == "kk":
+        language = "kk-KZ"
+        voice_name = "kk-KZ-Standard-B"  # мужской
+    else:
+        language = "ru-RU"
+        voice_name = "ru-RU-Standard-D"  # мужской
+
+    synthesis_input = texttospeech.SynthesisInput(text=text)
+    voice = texttospeech.VoiceSelectionParams(
+        language_code=language,
+        name=voice_name,
+        ssml_gender=texttospeech.SsmlVoiceGender.MALE
+    )
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3
+    )
+
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
+
+    b64 = base64.b64encode(response.audio_content).decode()
     return f"data:audio/mp3;base64,{b64}"
 
-# ---- Chat display ----
+# ---- Chat Display ----
 st.title("🤖 Digital Urpaq Support Bot")
 
 with st.container():
@@ -114,7 +139,7 @@ with st.container():
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- User input ----
+# ---- User Input ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
 user_input = st.text_input(placeholder, placeholder=placeholder)
 send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
@@ -135,7 +160,6 @@ if send and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    # команды
     if ("выключи голос" in message) or ("дыбысты сөндір" in message):
         st.session_state.tts_enabled = False
         reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
@@ -159,7 +183,7 @@ if send and user_input:
     st.session_state.pending_audio = make_tts(reply, lang_code) if st.session_state.tts_enabled else None
     st.rerun()
 
-# ---- Audio playback ----
+# ---- Audio Playback ----
 if st.session_state.pending_audio:
     st.markdown("""
         <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
@@ -178,4 +202,6 @@ if st.session_state.pending_audio:
     """, unsafe_allow_html=True)
 
     st.session_state.pending_audio = None
+
+
 
