@@ -1,6 +1,5 @@
 import streamlit as st
 from google.cloud import texttospeech
-import base64
 
 # ---- Page setup ----
 st.set_page_config(page_title="Digital Urpaq Support Bot", layout="wide")
@@ -45,8 +44,8 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
-if "pending_audio" not in st.session_state:
-    st.session_state.pending_audio = None
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
 
 # ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
@@ -88,7 +87,6 @@ cabinet_map_kk = {
 # ---- Google Cloud TTS Function ----
 def make_tts(text: str, lang_code: str):
     client = texttospeech.TextToSpeechClient()
-
     if lang_code == "kk":
         language = "kk-KZ"
         voice_name = "kk-KZ-Standard-A"
@@ -103,9 +101,7 @@ def make_tts(text: str, lang_code: str):
         ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
     )
     audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice_params, audio_config=audio_config
-    )
+    response = client.synthesize_speech(input=synthesis_input, voice=voice_params, audio_config=audio_config)
     return response.audio_content
 
 # ---- Chat UI ----
@@ -123,12 +119,7 @@ user_input = st.text_input(placeholder, placeholder=placeholder)
 send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
 
 # ---- Logic ----
-if send and user_input:
-    msg = user_input.strip()
-    st.session_state.messages.append({"role": "user", "text": msg})
-    message = msg.lower()
-    reply = None
-
+def generate_reply(message: str):
     if st.session_state.lang == "ru":
         responses = responses_ru
         cabinet_map = cabinet_map_ru
@@ -138,16 +129,19 @@ if send and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    if ("выключи голос" in message) or ("дыбысты сөндір" in message):
+    reply = None
+    message_lower = message.lower()
+
+    if ("выключи голос" in message_lower) or ("дыбысты сөндір" in message_lower):
         st.session_state.tts_enabled = False
         reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
-    elif ("включи голос" in message) or ("дыбысты қос" in message):
+    elif ("включи голос" in message_lower) or ("дыбысты қос" in message_lower):
         st.session_state.tts_enabled = True
         reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
-    elif "кабинет" in message:
+    elif "кабинет" in message_lower:
         found = False
         for k, v in cabinet_map.items():
-            if k in message:
+            if k in message_lower:
                 reply = v
                 found = True
                 break
@@ -155,21 +149,31 @@ if send and user_input:
             reply = "Уточните, пожалуйста, какой кабинет?" if st.session_state.lang == "ru" else "Қай кабинет екенін нақтылаңыз."
     else:
         for k, v in responses.items():
-            if k in message:
+            if k in message_lower:
                 reply = v
                 break
-
     if not reply:
-        reply = (
-            "Простите, я не понял команду. Напишите 'помощь'."
-            if st.session_state.lang == "ru"
-            else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
-        )
+        reply = "Простите, я не понял команду. Напишите 'помощь'." if st.session_state.lang == "ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
+    return reply, lang_code
+
+# ---- Handle user message ----
+if send and user_input:
+    st.session_state.messages.append({"role": "user", "text": user_input})
+    reply, lang_code = generate_reply(user_input)
     st.session_state.messages.append({"role": "bot", "text": reply})
 
     if st.session_state.tts_enabled:
         audio_content = make_tts(reply, lang_code)
         st.audio(audio_content, format="audio/mp3", start_time=0)
+        st.session_state.last_audio = audio_content
 
     st.rerun()
+
+# ---- Repeat last audio ----
+if st.session_state.last_audio:
+    repeat_label = "Повторить голос" if st.session_state.lang == "ru" else "Дауысты қайтадан тыңдау"
+    if st.button(repeat_label):
+        st.audio(st.session_state.last_audio, format="audio/mp3", start_time=0)
+
+
