@@ -1,4 +1,2 @@
-streamlit>=1.50.0
-TTS>=0.15
-rich>=10.14.0
-pyttsx3
+streamlit==1.50.0
+pyttsx3==2.90
