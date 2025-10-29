@@ -165,3 +165,4 @@ if submit_button and user_input:
 # ---- TTS Toggle ----
 st.checkbox("Включить TTS / TTS қосу", value=st.session_state.tts_enabled, key="tts_enabled")
 
+
