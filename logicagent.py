@@ -60,6 +60,8 @@ if "messages" not in st.session_state:
     }]
 if "tts_enabled" not in st.session_state:
     st.session_state.tts_enabled = True
+if "pending_audio" not in st.session_state:
+    st.session_state.pending_audio = None
 
 # ---- Language Switcher ----
 col1, col2 = st.columns([4, 1])
@@ -101,14 +103,12 @@ cabinet_map_kk = {
 # ---- TTS Function ----
 def make_tts(text: str, lang_code: str):
     client = texttospeech.TextToSpeechClient()
-
     if lang_code == "kk":
         language = "kk-KZ"
         voice_name = "kk-KZ-Standard-A"
     else:
         language = "ru-RU"
         voice_name = "ru-RU-Standard-D"
-
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice_params = texttospeech.VoiceSelectionParams(
         language_code=language,
@@ -116,7 +116,6 @@ def make_tts(text: str, lang_code: str):
         ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
     )
     audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-
     response = client.synthesize_speech(
         input=synthesis_input, voice=voice_params, audio_config=audio_config
     )
@@ -125,7 +124,6 @@ def make_tts(text: str, lang_code: str):
 
 # ---- Chat UI ----
 st.title("🤖 Digital Urpaq Support Bot")
-
 with st.container():
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     for msg in st.session_state.messages:
@@ -187,7 +185,20 @@ if send and user_input:
     st.session_state.messages.append({"role": "bot", "text": reply})
     if st.session_state.tts_enabled:
         audio_data = make_tts(reply, lang_code)
-        st.audio(audio_data, format="audio/mp3")
-    st.rerun()
+        # Показываем индикатор микрофона и аудио
+        st.markdown(f"""
+        <div id="mic-indicator">🎤 <span class="mic">Говорю...</span></div>
+        <audio id="bot_audio" autoplay>
+            <source src="{audio_data}" type="audio/mp3">
+        </audio>
+        <script>
+            const audio = document.getElementById('bot_audio');
+            audio.onended = () => {{
+                const mic = document.getElementById('mic-indicator');
+                if (mic) mic.style.display = 'none';
+            }};
+        </script>
+        """, unsafe_allow_html=True)
 
+    st.rerun()
 
