@@ -25,21 +25,6 @@ header, footer, #MainMenu {visibility: hidden;}
 .user-bubble {background-color: #DCF8C6; align-self: flex-end;}
 .bot-bubble {background-color: #F1F0F0; align-self: flex-start;}
 .chat-container {display: flex; flex-direction: column;}
-#mic-indicator {
-    text-align: center;
-    font-size: 18px;
-    margin-top: 10px;
-}
-.mic {
-    display: inline-block;
-    margin-left: 10px;
-    animation: pulse 1s infinite;
-}
-@keyframes pulse {
-    0% {transform: scale(1); opacity: 1;}
-    50% {transform: scale(1.3); opacity: 0.5;}
-    100% {transform: scale(1); opacity: 1;}
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,10 +112,9 @@ with st.container():
 # ---- Input ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
 user_input = st.text_input(placeholder, placeholder=placeholder)
-send = st.button("Жіберу" if st.session_state.lang == "kk" else "Отправить")
 
 # ---- Logic ----
-if send and user_input:
+if user_input:
     msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
@@ -145,15 +129,8 @@ if send and user_input:
         cabinet_map = cabinet_map_kk
         lang_code = "kk"
 
-    # Управление голосом
-    if ("выключи голос" in message) or ("дыбысты сөндір" in message):
-        st.session_state.tts_enabled = False
-        reply = "Голос отключен." if st.session_state.lang == "ru" else "Дыбыс сөндірілді."
-    elif ("включи голос" in message) or ("дыбысты қос" in message):
-        st.session_state.tts_enabled = True
-        reply = "Голос включен." if st.session_state.lang == "ru" else "Дыбыс қосылды."
     # Кабинеты
-    elif "кабинет" in message:
+    if "кабинет" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -161,7 +138,7 @@ if send and user_input:
                 found = True
                 break
         if not found:
-            reply = "Уточните, пожалуйста, какой кабинет?" if st.session_state.lang=="ru" else "Қай кабинетті қажет ететінін нақтылаңыз?"
+            reply = "Уточните, пожалуйста, какой кабинет?" if lang_code=="ru" else "Қай кабинетті қажет ететінін нақтылаңыз?"
     # Другие команды
     else:
         found = False
@@ -171,13 +148,14 @@ if send and user_input:
                 found = True
                 break
         if not found:
-            reply = "Простите, я не понял команду. Напишите 'помощь'." if st.session_state.lang=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
+            reply = "Простите, я не понял команду. Напишите 'помощь'." if lang_code=="ru" else "Кешіріңіз, түсінбедім. 'Көмек' деп жазыңыз."
 
     st.session_state.messages.append({"role": "bot", "text": reply})
 
-    # ---- TTS ----
+    # ---- Авто-TTS ----
     if st.session_state.tts_enabled:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
     st.experimental_rerun()
+
