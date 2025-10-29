@@ -18,8 +18,10 @@ col1, col2 = st.columns([4,1])
 with col2:
     if st.button("Қаз / Рус"):
         st.session_state.lang = "kk" if st.session_state.lang=="ru" else "ru"
-        st.session_state.messages.append({"role":"bot","text":"Язык переключён на русский." if st.session_state.lang=="ru" else "Тіл қазақ тіліне ауыстырылды."})
-        st.rerun()
+        st.session_state.messages.append({
+            "role":"bot",
+            "text":"Язык переключён на русский." if st.session_state.lang=="ru" else "Тіл қазақ тіліне ауыстырылды."
+        })
 
 # ---- Responses ----
 responses = {
@@ -48,16 +50,21 @@ for msg in st.session_state.messages:
 
 # ---- User Input ----
 user_input = st.text_input("Введите сообщение")
-if st.button("Отправить") and user_input:
+send_button = st.button("Отправить")
+
+if send_button and user_input:
     st.session_state.messages.append({"role":"user","text":user_input})
+    
     # ---- Simple response matching ----
     lang = st.session_state.lang
     msg_lower = user_input.lower()
     reply = "Простите, я не понял команду." if lang=="ru" else "Кешіріңіз, түсінбедім."
+    
     for key, text in responses[lang].items():
         if key in msg_lower:
             reply = text
             break
+    
     st.session_state.messages.append({"role":"bot","text":reply})
 
     # ---- TTS ----
@@ -65,4 +72,3 @@ if st.button("Отправить") and user_input:
         lang_code = "ru" if lang=="ru" else "kk"
         audio = make_tts(reply, lang=lang_code)
         st.audio(audio, format="audio/mp3")
-    st.experimental_rerun()
