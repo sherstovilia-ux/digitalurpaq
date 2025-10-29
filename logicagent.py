@@ -135,7 +135,7 @@ if submit_button and user_input:
         lang_code = "kk"
 
     # Кабинеты
-    if "кабинет" in message or "кабинет" in message.lower():
+    if "кабинет" in message or "кабинеті" in message:
         found = False
         for k, v in cabinet_map.items():
             if k in message:
@@ -161,4 +161,7 @@ if submit_button and user_input:
         audio_bytes = make_tts_bytes(reply, lang_code)
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3", start_time=0)
+
+# ---- TTS Toggle ----
+st.checkbox("Включить TTS / TTS қосу", value=st.session_state.tts_enabled, key="tts_enabled")
 
