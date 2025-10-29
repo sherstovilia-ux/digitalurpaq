@@ -109,12 +109,14 @@ with st.container():
         st.markdown(f'<div class="chat-bubble {bubble}">{msg["text"]}</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- Input ----
+# ---- Input Form ----
 placeholder = "Сұрағыңызды жазыңыз..." if st.session_state.lang == "kk" else "Ваш вопрос:"
-user_input = st.text_input(placeholder, placeholder=placeholder)
+with st.form(key="chat_form"):
+    user_input = st.text_input(" ", placeholder=placeholder, key="user_input")
+    submit_button = st.form_submit_button("Отправить")
 
 # ---- Logic ----
-if user_input:
+if submit_button and user_input:
     msg = user_input.strip()
     st.session_state.messages.append({"role": "user", "text": msg})
     message = msg.lower()
@@ -157,5 +159,7 @@ if user_input:
         audio_bytes = make_tts_bytes(reply, lang_code)
         st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
+    # Очистить поле ввода после отправки
+    st.session_state.user_input = ""
     st.experimental_rerun()
 
